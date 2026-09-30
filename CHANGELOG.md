@@ -3,6 +3,31 @@
 All notable changes to this project are documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-09-30
+
+Brings the Flysystem adapter from [platformcommunity/flysystem-bunnycdn](https://github.com/PlatformCommunity/flysystem-bunnycdn)
+(MIT) into this package so it can be maintained here.
+
+### Added
+- Flysystem v3 adapter under `Siberfx\BunnyCdn\Flysystem`: `BunnyCDNAdapter`, `BunnyCDNClient`, `BunnyCDNRegion`, `WriteBatchFile`,
+  `Util`, `Exceptions\BunnyCDNException`, `Exceptions\NotFoundException`. It supports read/write (strings and streams), copy, move and
+  delete, directories and deep listing, metadata, MD5/SHA256 checksums, public URLs, signed temporary URLs (token auth), a root path
+  prefix, and concurrent `writeBatch()` uploads.
+- Laravel `bunnycdn` filesystem driver, registered by `BunnyCdnServiceProvider` (no `Storage::extend()` needed). Missing disk options
+  fall back to the `bunny-cdn.storage` config.
+- Dependencies matching the upstream adapter: `guzzlehttp/guzzle ^7.4`, `league/flysystem ^3.16`, `league/mime-type-detection ^1.11`.
+- Dev tooling: the Flysystem adapter conformance suite (`league/flysystem-adapter-test-utilities`), PHPStan (level 5), Pint,
+  and a service provider test against `illuminate/*` 12/13.
+- `LICENSE` file with attribution for the incorporated MIT code.
+
+### Changed
+- Dev dependency `phpunit/phpunit` is now `^11.5`. The Flysystem conformance suite still uses `@test` annotations, which PHPUnit 12
+  ignores.
+- `BunnyCDNClient` uses `BunnyCDNRegion::LOS_ANGELES` internally (`LOS_ANGELAS` is still available but deprecated).
+
+### Migrating from `platformcommunity/flysystem-bunnycdn`
+Replace `PlatformCommunity\Flysystem\BunnyCDN` with `Siberfx\BunnyCdn\Flysystem`. Class names and constructor arguments are unchanged.
+
 ## [2.0.0] - 2026-09-30
 
 Modernised for PHP 8.4, 8.5 and 8.6 and aligned with the current bunny.net API (core, Edge Storage, Stream, Logging).

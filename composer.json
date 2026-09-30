@@ -1,9 +1,9 @@
 {
   "name": "siberfx/bunny-cdn",
-  "description": "Bunny net CDN API class for handling pull zones, storage zones, video streaming and DNS.",
+  "description": "Bunny.net API client (pull zones, storage, stream, DNS) with a Flysystem v3 adapter and Laravel integration.",
   "type": "library",
   "license": "MIT",
-  "keywords": ["bunny", "bunnycdn", "bunny.net", "cdn", "storage", "stream", "dns", "laravel"],
+  "keywords": ["bunny", "bunnycdn", "bunny.net", "cdn", "storage", "stream", "dns", "laravel", "flysystem", "filesystem"],
   "minimum-stability": "stable",
   "authors": [
     {
@@ -15,14 +15,29 @@
   "require": {
     "php": "^8.4",
     "ext-curl": "*",
-    "ext-json": "*"
+    "ext-json": "*",
+    "guzzlehttp/guzzle": "^7.4",
+    "league/flysystem": "^3.16",
+    "league/mime-type-detection": "^1.11"
   },
   "require-dev": {
-    "phpunit/phpunit": "^12.0"
+    "fakerphp/faker": "^1.23",
+    "illuminate/config": "^12.0|^13.0",
+    "illuminate/container": "^12.0|^13.0",
+    "illuminate/filesystem": "^12.0|^13.0",
+    "illuminate/support": "^12.0|^13.0",
+    "laravel/pint": "^1.30",
+    "league/flysystem-adapter-test-utilities": "^3",
+    "league/flysystem-memory": "^3.0",
+    "league/flysystem-path-prefixing": "^3.3",
+    "phpstan/phpstan": "^2.1",
+    "phpunit/phpunit": "^11.5",
+    "vlucas/phpdotenv": "^5.6"
   },
   "suggest": {
     "ext-ftp": "Required for the FTP based storage methods (uploadFile, downloadFile, createFolder, ...)",
-    "illuminate/support": "Required to use the Laravel service provider (^11.0|^12.0|^13.0)"
+    "illuminate/support": "Required to use the Laravel service provider (^12.0|^13.0)",
+    "illuminate/filesystem": "Required for the Laravel \"bunnycdn\" storage disk (^12.0|^13.0)"
   },
   "autoload": {
     "psr-4": {
@@ -42,7 +57,9 @@
     }
   },
   "scripts": {
-    "test": "phpunit"
+    "test": "phpunit",
+    "analyse": "phpstan analyse",
+    "format": "pint"
   },
   "config": {
     "sort-packages": true

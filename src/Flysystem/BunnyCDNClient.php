@@ -1,0 +1,213 @@
+<?php
+
+namespace Siberfx\BunnyCdn\Flysystem;
+
+use GuzzleHttp\Client as Guzzle;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Handler\CurlHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Request;
+use Siberfx\BunnyCdn\Flysystem\Exceptions\BunnyCDNException;
+use Siberfx\BunnyCdn\Flysystem\Exceptions\NotFoundException;
+use Psr\Http\Client\ClientExceptionInterface;
+
+class BunnyCDNClient
+{
+    public Guzzle $guzzleClient;
+
+    public function __construct(
+        public string $storage_zone_name,
+        private string $api_key,
+        private string $region = BunnyCDNRegion::FALKENSTEIN
+    ) {
+        $handler = HandlerStack::create(new CurlHandler);
+
+        $this->guzzleClient = new Guzzle([
+            'handler' => $handler,
+        ]);
+    }
+
+    private static function get_base_url($region): string
+    {
+        return match (strtolower($region)) {
+            BunnyCDNRegion::NEW_YORK => 'https://ny.storage.bunnycdn.com/',
+            BunnyCDNRegion::LOS_ANGELES =>'https://la.storage.bunnycdn.com/',
+            BunnyCDNRegion::SINGAPORE => 'https://sg.storage.bunnycdn.com/',
+            BunnyCDNRegion::SYDNEY => 'https://syd.storage.bunnycdn.com/',
+            BunnyCDNRegion::UNITED_KINGDOM => 'https://uk.storage.bunnycdn.com/',
+            BunnyCDNRegion::STOCKHOLM => 'https://se.storage.bunnycdn.com/',
+            BunnyCDNRegion::BRAZIL => 'https://br.storage.bunnycdn.com/',
+            BunnyCDNRegion::JOHANNESBURG => 'https://jh.storage.bunnycdn.com/',
+            default => 'https://storage.bunnycdn.com/'
+        };
+    }
+
+    public function createRequest(string $path, string $method = 'GET', array $headers = [], $body = null): Request
+    {
+        return new Request(
+            $method,
+            self::get_base_url($this->region).Util::normalizePath('/'.$this->storage_zone_name.'/'.$path),
+            array_merge([
+                'Accept' => '*/*',
+                'AccessKey' => $this->api_key,
+            ], $headers),
+            $body
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>|string
+     *
+     * @throws ClientExceptionInterface
+     */
+    private function request(Request $request, array $options = []): mixed
+    {
+        $contents = $this->guzzleClient->send($request, $options)->getBody()->getContents();
+
+        $decoded = json_decode($contents, true);
+
+        return \is_array($decoded) ? $decoded : $contents;
+    }
+
+    /**
+     * @throws NotFoundException|BunnyCDNException
+     */
+    public function list(string $path): array
+    {
+        try {
+            $listing = $this->request($this->createRequest(Util::normalizePath($path).'/'));
+
+            // Throw an exception if we don't get back an array
+            if (! is_array($listing)) {
+                throw new NotFoundException('File is not a directory');
+            }
+
+            return array_map(function ($bunny_cdn_item) {
+                return $bunny_cdn_item;
+            }, $listing);
+            // @codeCoverageIgnoreStart
+        } catch (GuzzleException $e) {
+            throw match ($e->getCode()) {
+                404 => new NotFoundException($e->getMessage()),
+                default => new BunnyCDNException($e->getMessage())
+            };
+        }
+        // @codeCoverageIgnoreEnd
+    }
+
+    /**
+     * @throws BunnyCDNException
+     * @throws NotFoundException
+     */
+    public function download(string $path): string
+    {
+        try {
+            $content = $this->request($this->createRequest($path.'?download'));
+
+            if (\is_array($content)) {
+                return \json_encode($content);
+            }
+
+            return $content;
+            // @codeCoverageIgnoreStart
+        } catch (GuzzleException $e) {
+            throw match ($e->getCode()) {
+                404 => new NotFoundException($e->getMessage()),
+                default => new BunnyCDNException($e->getMessage())
+            };
+        }
+        // @codeCoverageIgnoreEnd
+    }
+
+    /**
+     * @return resource|null
+     *
+     * @throws BunnyCDNException
+     * @throws NotFoundException
+     */
+    public function stream(string $path)
+    {
+        try {
+            return $this->guzzleClient->send($this->createRequest($path), ['stream' => true])->getBody()->detach();
+            // @codeCoverageIgnoreStart
+        } catch (GuzzleException $e) {
+            throw match ($e->getCode()) {
+                404 => new NotFoundException($e->getMessage()),
+                default => new BunnyCDNException($e->getMessage())
+            };
+        }
+        // @codeCoverageIgnoreEnd
+    }
+
+    public function getUploadRequest(string $path, $contents): Request
+    {
+        $headers = [
+            'Content-Type' => 'application/octet-stream',
+        ];
+
+        if (is_resource($contents)) {
+            $fstat = fstat($contents);
+            if (isset($fstat['size'])) {
+                $headers['Content-Length'] = $fstat['size'];
+            }
+        }
+
+        return $this->createRequest($path, 'PUT', $headers, $contents);
+    }
+
+    /**
+     * @throws BunnyCDNException
+     */
+    public function upload(string $path, $contents): mixed
+    {
+        try {
+            return $this->request($this->getUploadRequest($path, $contents), [
+                'connect_timeout' => 5,
+                'timeout' => 60 * 60, // 1 hour
+                'expect' => true,
+            ]);
+            // @codeCoverageIgnoreStart
+        } catch (GuzzleException $e) {
+            throw new BunnyCDNException($e->getMessage());
+        }
+        // @codeCoverageIgnoreEnd
+    }
+
+    /**
+     * @throws BunnyCDNException
+     */
+    public function make_directory(string $path): mixed
+    {
+        try {
+            return $this->request($this->createRequest(Util::normalizePath($path).'/', 'PUT', [
+                'Content-Length' => 0,
+            ]));
+            // @codeCoverageIgnoreStart
+        } catch (GuzzleException $e) {
+            throw match ($e->getCode()) {
+                400 => new BunnyCDNException('Directory already exists'),
+                default => new BunnyCDNException($e->getMessage())
+            };
+        }
+        // @codeCoverageIgnoreEnd
+    }
+
+    /**
+     * @throws NotFoundException
+     * @throws BunnyCDNException
+     */
+    public function delete(string $path): mixed
+    {
+        try {
+            return $this->request($this->createRequest($path, 'DELETE'));
+            // @codeCoverageIgnoreStart
+        } catch (GuzzleException $e) {
+            throw match ($e->getCode()) {
+                404 => new NotFoundException($e->getMessage()),
+                default => new BunnyCDNException($e->getMessage())
+            };
+        }
+        // @codeCoverageIgnoreEnd
+    }
+}

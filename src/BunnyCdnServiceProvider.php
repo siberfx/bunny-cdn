@@ -5,7 +5,13 @@ declare(strict_types=1);
 namespace Siberfx\BunnyCdn;
 
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Support\ServiceProvider;
+use League\Flysystem\Filesystem;
+use Siberfx\BunnyCdn\Flysystem\BunnyCDNAdapter;
+use Siberfx\BunnyCdn\Flysystem\BunnyCDNClient;
+use Siberfx\BunnyCdn\Flysystem\BunnyCDNRegion;
 use Siberfx\BunnyCdn\Http\CurlHttpClient;
 use Siberfx\BunnyCdn\Http\HttpClient;
 
@@ -51,5 +57,33 @@ class BunnyCdnServiceProvider extends ServiceProvider
                 __DIR__ . '/config/bunny-cdn.php' => $this->app->configPath('bunny-cdn.php'),
             ], 'bunny-cdn-config');
         }
+
+        $this->callAfterResolving('filesystem', function (FilesystemManager $manager) {
+            // Laravel binds this callback to the manager, so it must not rely on $this
+            $manager->extend('bunnycdn', fn (Container $app, array $config) => BunnyCdnServiceProvider::createBunnyDisk($app, $config));
+        });
+    }
+
+    /**
+     * Build the "bunnycdn" disk. Missing disk options fall back to the bunny-cdn storage config.
+     *
+     * @param array<string, mixed> $config
+     */
+    public static function createBunnyDisk(Container $app, array $config): FilesystemAdapter
+    {
+        $defaults = (array)$app['config']->get('bunny-cdn.storage', []);
+
+        $adapter = new BunnyCDNAdapter(
+            new BunnyCDNClient(
+                (string)($config['storage_zone'] ?? $defaults['zone'] ?? ''),
+                (string)($config['api_key'] ?? $defaults['access_key'] ?? ''),
+                (string)($config['region'] ?? $defaults['region'] ?? BunnyCDNRegion::DEFAULT),
+            ),
+            (string)($config['pull_zone'] ?? ''),
+            (string)($config['root'] ?? ''),
+        );
+        $adapter->setTokenAuthKey((string)($config['token_auth_key'] ?? ''));
+
+        return new FilesystemAdapter(new Filesystem($adapter, $config), $adapter, $config);
     }
 }

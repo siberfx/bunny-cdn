@@ -1,9 +1,9 @@
 # Bunny CDN API for PHP
 
 A PHP client for the [bunny.net](https://bunny.net) API: pull zones, Edge Storage (HTTP + FTP), Stream (video) and DNS,
-with an optional Laravel service provider.
+plus a Flysystem v3 storage adapter and Laravel integration (service provider + `bunnycdn` disk).
 
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)]()
 [![PHP](https://img.shields.io/badge/PHP-8.4%20%7C%208.5%20%7C%208.6-purple.svg)]()
 
 > Upgrading from 1.x? See [CHANGELOG.md](CHANGELOG.md#upgrading-from-1x). Keys are now passed to the constructor and
@@ -13,8 +13,9 @@ with an optional Laravel service provider.
 
 - PHP 8.4, 8.5 or 8.6
 - `ext-curl`, `ext-json`
+- `guzzlehttp/guzzle` 7, `league/flysystem` 3 *(installed automatically)*
 - `ext-ftp` *(optional, only for the FTP storage methods)*
-- `illuminate/support` 11+ *(optional, only for Laravel integration)*
+- Laravel 12 or 13 *(optional, for the service provider and `bunnycdn` disk)*
 
 ## Installation
 
@@ -100,6 +101,30 @@ public function upload(\Siberfx\BunnyCdn\BunnyAPIStorage $storage)
 {
     $storage->uploadFileHTTP($path, 'avatars/1.jpg');
 }
+```
+
+### `bunnycdn` storage disk
+
+The provider also registers a `bunnycdn` filesystem driver (no `Storage::extend()` needed). Add a disk to
+`config/filesystems.php`; any option you leave out falls back to the `bunny-cdn.storage` config above.
+
+```php
+'bunnycdn' => [
+    'driver' => 'bunnycdn',
+    'storage_zone' => env('BUNNY_STORAGE_ZONE'),
+    'api_key' => env('BUNNY_STORAGE_ACCESS_KEY'),          // storage zone password
+    'region' => env('BUNNY_STORAGE_REGION', 'de'),
+    'pull_zone' => env('BUNNY_PULL_ZONE'),                  // e.g. https://my-zone.b-cdn.net (for url())
+    'token_auth_key' => env('BUNNY_TOKEN_AUTH_KEY', ''),    // optional, for temporaryUrl()
+    'root' => env('BUNNY_STORAGE_ROOT', ''),                // optional path prefix
+],
+```
+
+```php
+Storage::disk('bunnycdn')->put('index.html', '<html>Hello World</html>');
+Storage::disk('bunnycdn')->url('index.html');
+Storage::disk('bunnycdn')->temporaryUrl('file.pdf', now()->addHour());
+Storage::disk('bunnycdn')->temporaryUrl('file.pdf', 60, ['download' => 'file.pdf']);  // minutes + signed params
 ```
 
 ## Account (`BunnyAPI`)
@@ -234,6 +259,51 @@ $storage->moveUpOne();
 $storage->closeConnection();
 ```
 
+## Flysystem adapter
+
+A [Flysystem v3](https://flysystem.thephpleague.com) adapter for Edge Storage, based on
+[platformcommunity/flysystem-bunnycdn](https://github.com/PlatformCommunity/flysystem-bunnycdn) and maintained here.
+
+```php
+use League\Flysystem\Filesystem;
+use Siberfx\BunnyCdn\Flysystem\BunnyCDNAdapter;
+use Siberfx\BunnyCdn\Flysystem\BunnyCDNClient;
+use Siberfx\BunnyCdn\Flysystem\BunnyCDNRegion;
+
+$adapter = new BunnyCDNAdapter(
+    new BunnyCDNClient('storage-zone', 'storage-zone-password', BunnyCDNRegion::FALKENSTEIN),
+    'https://my-zone.b-cdn.net',   // pull zone URL, optional (enables publicUrl())
+    'assets',                      // root path, optional
+);
+$adapter->setTokenAuthKey('token-auth-key');   // optional (enables temporaryUrl())
+
+$filesystem = new Filesystem($adapter);
+$filesystem->write('hello.txt', 'Hello');
+$filesystem->publicUrl('hello.txt');
+$filesystem->temporaryUrl('hello.txt', new DateTimeImmutable('+1 hour'));
+$filesystem->checksum('hello.txt', ['checksum_algo' => 'sha256']);   // uses Bunny's stored checksum
+```
+
+Supports read/write (strings and streams), copy, move, delete, directories, deep listing, file size, mime type,
+last modified, MD5/SHA256 checksums, public and signed temporary URLs, and concurrent batch uploads:
+
+```php
+use League\Flysystem\Config;
+use Siberfx\BunnyCdn\Flysystem\WriteBatchFile;
+
+$adapter->writeBatch([
+    new WriteBatchFile('/local/a.jpg', 'images/a.jpg'),
+    new WriteBatchFile('/local/b.jpg', 'images/b.jpg'),
+], new Config(['concurrency' => 20]));
+```
+
+Regions: `FALKENSTEIN` (de), `STOCKHOLM` (se), `UNITED_KINGDOM` (uk), `NEW_YORK` (ny), `LOS_ANGELES` (la), `SINGAPORE` (sg),
+`SYDNEY` (syd), `BRAZIL` (br), `JOHANNESBURG` (jh).
+
+**Migrating from `platformcommunity/flysystem-bunnycdn`:** replace the namespace
+`PlatformCommunity\Flysystem\BunnyCDN` with `Siberfx\BunnyCdn\Flysystem`; class names and constructor arguments are
+unchanged. In Laravel you can drop your `Storage::extend('bunnycdn', ...)` code – the driver is registered for you.
+
 ## Stream (`BunnyAPIStream`)
 
 ```php
@@ -322,9 +392,11 @@ $dns->dismissDNSConfigNotice(1234);
 ## Testing
 
 ```bash
-composer test
+composer test      # PHPUnit, incl. the Flysystem adapter conformance suite
+composer analyse   # PHPStan
 ```
 
 ## License
 
-MIT
+MIT. Includes code from [cp6/BunnyCDN-API](https://github.com/cp6/BunnyCDN-API) and
+[PlatformCommunity/flysystem-bunnycdn](https://github.com/PlatformCommunity/flysystem-bunnycdn) (both MIT), see [LICENSE](LICENSE).

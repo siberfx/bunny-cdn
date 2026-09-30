@@ -1,0 +1,280 @@
+<?php
+
+namespace Siberfx\BunnyCdn\Tests\Flysystem;
+
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\Response;
+use PHPUnit\Framework\TestCase;
+use Siberfx\BunnyCdn\Flysystem\BunnyCDNClient;
+use Siberfx\BunnyCdn\Flysystem\BunnyCDNRegion;
+use Siberfx\BunnyCdn\Flysystem\Exceptions\BunnyCDNException;
+use Siberfx\BunnyCdn\Flysystem\Exceptions\NotFoundException;
+
+use function PHPUnit\Framework\assertEmpty;
+
+if (\is_file(__DIR__.'/ClientDI.php')) {
+    require_once __DIR__.'/ClientDI.php';
+}
+
+class ClientTest extends TestCase
+{
+    public BunnyCDNClient $client;
+
+    private static function bunnyCDNClient(): BunnyCDNClient
+    {
+        global $storage_zone;
+        global $api_key;
+        global $region;
+
+        if ($storage_zone !== null && $api_key !== null) {
+            return new BunnyCDNClient($storage_zone, $api_key, $region ?? BunnyCDNRegion::DEFAULT);
+        }
+
+        return new MockClient('test_storage_zone', '123');
+    }
+
+    protected function setUp(): void
+    {
+        $this->client = self::bunnyCDNClient();
+        $this->clearStorage();
+    }
+
+    private function clearStorage()
+    {
+        foreach ($this->client->list('/') as $item) {
+            try {
+                $this->client->delete($item['IsDirectory'] ? $item['ObjectName'].'/' : $item['ObjectName']);
+            } catch (\Exception $exception) {
+            } // Try our best effort at removing everything from the filesystem
+        }
+
+        assertEmpty(
+            $this->client->list('/'),
+            'Warning! Bunny Client not emptied out prior to next test. This can be problematic when running the test against production clients'
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        $this->clearStorage();
+    }
+
+    /**
+     * @return void
+     *
+     * @throws NotFoundException
+     * @throws BunnyCDNException
+     */
+    public function test_listing_directory()
+    {
+        // Arrange
+        $this->client->make_directory('subfolder');
+        $this->client->upload('example_image.png', 'test');
+
+        $response = $this->client->list('/');
+
+        $this->assertIsArray($response);
+        $this->assertCount(2, $response);
+    }
+
+    /**
+     * @return void
+     *
+     * @throws NotFoundException
+     * @throws BunnyCDNException
+     */
+    public function test_listing_subdirectory()
+    {
+        // Arrange
+        $this->client->upload('/subfolder/example_image.png', 'test');
+
+        // Act
+        $response = $this->client->list('/subfolder');
+
+        // Assert
+        $this->assertIsArray($response);
+        $this->assertCount(1, $response);
+    }
+
+    /**
+     * @return void
+     *
+     * @throws BunnyCDNException
+     * @throws NotFoundException
+     */
+    public function test_download_file()
+    {
+        $this->client->upload('/test.png', 'test');
+
+        $response = $this->client->download('/test.png');
+
+        $this->assertIsString($response);
+    }
+
+    /**
+     * @return void
+     *
+     * @throws BunnyCDNException
+     * @throws NotFoundException
+     */
+    public function test_streaming()
+    {
+        $this->client->upload('/test.png', str_repeat('example_image_contents', 1024));
+
+        $stream = $this->client->stream('/test.png');
+
+        $this->assertIsResource($stream);
+
+        do {
+            $line = stream_get_line($stream, 512);
+            $this->assertStringContainsString('example_image_contents', $line);
+            $this->assertEquals(512, strlen($line));
+        } while ($line && strlen($line) > 512);
+    }
+
+    /**
+     * @return void
+     *
+     * @throws BunnyCDNException
+     */
+    public function test_upload()
+    {
+        $response = $this->client->upload('/test_contents.txt', 'testing_contents');
+
+        $this->assertIsArray($response);
+
+        $this->assertEquals([
+            'HttpCode' => 201,
+            'Message' => 'File uploaded.',
+        ], $response);
+    }
+
+    /**
+     * @return void
+     *
+     * @throws BunnyCDNException
+     */
+    public function test_make_directory()
+    {
+        $response = $this->client->make_directory('/test_dir/');
+
+        $this->assertIsArray($response);
+        $this->assertEquals([
+            'HttpCode' => 201,
+            'Message' => 'Directory created.',
+        ], $response);
+    }
+
+    /**
+     * @return void
+     *
+     * @throws BunnyCDNException
+     * @throws NotFoundException
+     */
+    public function test_delete_file()
+    {
+        $this->client->upload('test_file.txt', '123');
+
+        $response = $this->client->delete('/test_file.txt');
+
+        $this->assertIsArray($response);
+        $this->assertEquals([
+            'HttpCode' => 200,
+            'Message' => 'File deleted successfully.',
+        ], $response);
+    }
+
+    /**
+     * @return void
+     *
+     * @throws BunnyCDNException
+     * @throws NotFoundException
+     */
+    public function test_delete_file_not_found()
+    {
+        $this->expectException(NotFoundException::class);
+        $this->client->delete('file_not_found.txt');
+    }
+
+    public function test_upload_stream()
+    {
+        $stream = tmpfile();
+        $text = 'testing upload';
+        fwrite($stream, $text);
+        rewind($stream);
+
+        $response = $this->client->upload('/test_upload_stream.txt', $stream);
+
+        $this->assertIsArray($response);
+
+        $this->assertEquals([
+            'HttpCode' => 201,
+            'Message' => 'File uploaded.',
+        ], $response);
+
+        $this->assertEquals($text, $this->client->download('/test_upload_stream.txt'));
+
+        if (is_resource($stream)) {
+            fclose($stream);
+        }
+    }
+
+    private function clientWithResponseBody(string $body): BunnyCDNClient
+    {
+        $client = new BunnyCDNClient('test_storage_zone', 'api-key');
+        $client->guzzleClient = new Client([
+            'handler' => function () use ($body) {
+                return new Response(200, [], $body);
+            },
+        ]);
+
+        return $client;
+    }
+
+    public function test_download_returns_raw_content_for_numeric_body(): void
+    {
+        $client = $this->clientWithResponseBody('123');
+
+        $this->assertSame('123', $client->download('/file.txt'));
+    }
+
+    public function test_download_returns_raw_content_for_boolean_body(): void
+    {
+        $client = $this->clientWithResponseBody('true');
+
+        $this->assertSame('true', $client->download('/file.txt'));
+    }
+
+    public function test_download_returns_raw_content_for_json_object_body(): void
+    {
+        $client = $this->clientWithResponseBody('{"key":"value"}');
+
+        $this->assertSame('{"key":"value"}', $client->download('/file.txt'));
+    }
+
+    public function test_list_returns_array_for_json_array_body(): void
+    {
+        $client = $this->clientWithResponseBody('[{"ObjectName":"file.txt"}]');
+
+        $this->assertSame([['ObjectName' => 'file.txt']], $client->list('/'));
+    }
+
+    public function test_list_root_request_has_no_double_slash(): void
+    {
+        $capturedUri = null;
+        $client = new BunnyCDNClient('test_storage_zone', 'api-key');
+        $client->guzzleClient = new Client([
+            'handler' => function ($request) use (&$capturedUri) {
+                $capturedUri = (string) $request->getUri();
+
+                return new Response(200, [], '[]');
+            },
+        ]);
+
+        $client->list('');
+        $this->assertSame('https://storage.bunnycdn.com/test_storage_zone/', $capturedUri);
+
+        $client->list('folder');
+        $this->assertSame('https://storage.bunnycdn.com/test_storage_zone/folder/', $capturedUri);
+    }
+}
