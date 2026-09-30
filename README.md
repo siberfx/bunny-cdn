@@ -3,7 +3,7 @@
 A PHP client for the [bunny.net](https://bunny.net) API: pull zones, Edge Storage (HTTP + FTP), Stream (video) and DNS,
 plus a Flysystem v3 storage adapter and Laravel integration (service provider + `bunnycdn` disk).
 
-[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
 [![PHP](https://img.shields.io/badge/PHP-8.4%20%7C%208.5%20%7C%208.6-purple.svg)]()
 
 > Upgrading from 1.x? See [CHANGELOG.md](CHANGELOG.md#upgrading-from-1x). Keys are now passed to the constructor and
