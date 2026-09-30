@@ -25,11 +25,14 @@ jobs:
         php: ['8.4', '8.5']
         stability: [prefer-lowest, prefer-stable]
         experimental: [false]
+        composer-flags: ['']
         include:
-          # PHP 8.6 is still a release candidate; failures are reported but do not fail the build
+          # PHP 8.6 is still a release candidate; failures are reported but do not fail the build.
+          # Some dev tools (e.g. paratest) do not declare 8.6 support yet, so the upper PHP bound is ignored.
           - php: '8.6'
             stability: prefer-stable
             experimental: true
+            composer-flags: '--ignore-platform-req=php+'
 
     steps:
       - name: Checkout
@@ -48,14 +51,14 @@ jobs:
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: composer-${{ runner.os }}-php${{ matrix.php }}-${{ matrix.stability }}-${{ hashFiles('composer.json') }}
           restore-keys: composer-${{ runner.os }}-php${{ matrix.php }}-${{ matrix.stability }}-
 
       - name: Install dependencies
-        run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
+        run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress ${{ matrix.composer-flags }}
 
       - name: Run tests
         run: vendor/bin/pest --ci
