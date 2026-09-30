@@ -1,179 +1,182 @@
 <?php
 
-namespace Corbpie\BunnyCdn;
+declare(strict_types=1);
 
-use Corbpie\BunnyCdn\BunnyAPIException;
+namespace Siberfx\BunnyCdn;
+
+use Siberfx\BunnyCdn\Http\CurlHttpClient;
+use Siberfx\BunnyCdn\Http\HttpClient;
+use Siberfx\BunnyCdn\Http\HttpResponse;
 
 class BunnyAPI
 {
-    private const API_KEY = 'XXXX-XXXX-XXXX';//BunnyCDN API key
-    private const API_URL = 'https://api.bunny.net/';//URL for BunnyCDN API
-    protected const STORAGE_API_URL = 'https://storage.bunnycdn.com/';//URL for storage zone replication region (LA|NY|SG|SYD) Falkenstein is as default
-    private const VIDEO_STREAM_URL = 'https://video.bunnycdn.com/';//URL for Bunny video stream API
-    protected const HOSTNAME = 'storage.bunnycdn.com';//FTP hostname
-    private const STREAM_LIBRARY_ACCESS_KEY = 'XXXX-XXXX-XXXX';
-    protected string $api_key;
+    public const string API_URL = 'https://api.bunny.net/';//URL for bunny.net core API
+    public const string VIDEO_STREAM_URL = 'https://video.bunnycdn.com/';//URL for Bunny Stream API
 
-    protected string $stream_library_access_key;
-    protected string $access_key;
-    protected $connection;
-    private array $data;
+    protected HttpClient $http;
+    protected ?HttpResponse $last_response = null;
 
-    public bool $debug_request = false;
+    public function __construct(
+        protected string $api_key = '',
+        protected string $stream_library_access_key = '',
+        ?HttpClient $http = null,
+    ) {
+        $this->http = $http ?? new CurlHttpClient();
+    }
 
-    public function __construct()
+    public function apiKey(string $api_key): static
     {
-        try {
-            if (!$this->constApiKeySet()) {
-                throw new BunnyAPIException("You must provide an API key");
-            }
-            $this->api_key = self::API_KEY;
-            if (!isset($this->stream_library_access_key)) {
-                $this->stream_library_access_key = self::STREAM_LIBRARY_ACCESS_KEY;
-            }
-        } catch (BunnyAPIException $e) {//display error message
-            echo $e->errorMessage();
+        if (trim($api_key) === '') {
+            throw new BunnyAPIException('$api_key cannot be empty');
+        }
+        $this->api_key = $api_key;
+        return $this;
+    }
+
+    public function streamLibraryAccessKey(string $stream_library_access_key): static
+    {
+        if (trim($stream_library_access_key) === '') {
+            throw new BunnyAPIException('$stream_library_access_key cannot be empty');
+        }
+        $this->stream_library_access_key = $stream_library_access_key;
+        return $this;
+    }
+
+    public function setHttpClient(HttpClient $http): static
+    {
+        $this->http = $http;
+        return $this;
+    }
+
+    /** The raw response of the most recent request (useful for debugging) */
+    public function lastResponse(): ?HttpResponse
+    {
+        return $this->last_response;
+    }
+
+    /**
+     * Call the core API (https://api.bunny.net) authenticated with the account API key.
+     *
+     * @param array<string, mixed> $query
+     * @param array<string, mixed>|null $json
+     */
+    protected function APIcall(string $method, string $path, array $query = [], ?array $json = null): array
+    {
+        $this->assertKey($this->api_key, 'API key', 'apiKey()');
+        return $this->decode($this->jsonRequest($method, self::API_URL . $path, $this->api_key, $query, $json));
+    }
+
+    /**
+     * Call the Stream API (https://video.bunnycdn.com) authenticated with the stream library API key.
+     *
+     * @param array<string, mixed> $query
+     * @param array<string, mixed>|null $json
+     */
+    protected function streamCall(string $method, string $path, array $query = [], ?array $json = null): array
+    {
+        $this->assertKey($this->stream_library_access_key, 'stream library API key', 'streamLibraryAccessKey()');
+        return $this->decode($this->jsonRequest($method, self::VIDEO_STREAM_URL . $path, $this->stream_library_access_key, $query, $json));
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     * @param array<string, mixed>|null $json
+     */
+    protected function jsonRequest(string $method, string $url, string $access_key, array $query = [], ?array $json = null): HttpResponse
+    {
+        $headers = ['AccessKey' => $access_key, 'Accept' => 'application/json'];
+        $body = null;
+        if ($json !== null) {
+            $headers['Content-Type'] = 'application/json';
+            $body = json_encode($json === [] ? new \stdClass() : $json, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        }
+        return $this->send($method, $url . self::buildQuery($query), $headers, $body);
+    }
+
+    /**
+     * @param array<string, string> $headers
+     * @param string|resource|null $body
+     */
+    protected function send(string $method, string $url, array $headers = [], mixed $body = null): HttpResponse
+    {
+        $response = $this->http->send($method, $url, $headers, $body);
+        $this->last_response = $response;
+        if (!$response->successful()) {
+            throw BunnyAPIException::fromResponse($method, $url, $response);
+        }
+        return $response;
+    }
+
+    protected function decode(HttpResponse $response): array
+    {
+        $data = $response->json();
+        if (is_array($data)) {
+            return $data;
+        }
+        return ['http_code' => $response->status, 'response' => $data];
+    }
+
+    /** @param array<string, mixed> $query */
+    protected static function buildQuery(array $query): string
+    {
+        $query = array_filter($query, static fn (mixed $value): bool => $value !== null);
+        if ($query === []) {
+            return '';
+        }
+        $query = array_map(static fn (mixed $value): mixed => is_bool($value) ? ($value ? 'true' : 'false') : $value, $query);
+        return '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+    }
+
+    protected function assertKey(string $key, string $name, string $setter): void
+    {
+        if (trim($key) === '') {
+            throw new BunnyAPIException("You must provide a $name. Pass it to the constructor or use $setter");
         }
     }
 
-    public function apiKey(string $api_key = ''): void
+    public function purgeCache(string $url, bool $async = false, bool $exact_path = false): array
     {
-        try {
-            if (!isset($api_key) || trim($api_key) === '') {
-                throw new BunnyAPIException('$api_key cannot be empty');
-            }
-            $this->api_key = $api_key;
-        } catch (BunnyAPIException $e) {//display error message
-            echo $e->errorMessage();
-        }
-    }
-
-    public function streamLibraryAccessKey(string $stream_library_access_key = ''): void
-    {
-        try {
-            if (!isset($stream_library_access_key) || trim($stream_library_access_key) === '') {
-                throw new BunnyAPIException('$stream_library_access_key cannot be empty');
-            }
-            $this->stream_library_access_key = $stream_library_access_key;
-        } catch (BunnyAPIException $e) {//display error message
-            echo $e->errorMessage();
-        }
-    }
-
-    protected function constApiKeySet(): bool
-    {
-        return !(!defined("self::API_KEY") || empty(self::API_KEY));
-    }
-
-    protected function APIcall(string $method, string $url, array $params = [], string $url_type = 'BASE'): array
-    {
-        $curl = curl_init();
-        if ($method === "GET") {//GET request
-            if (!empty($params)) {
-                $url = sprintf("%s?%s", $url, http_build_query($params));
-            }
-        } elseif ($method === "POST") {//POST request
-            curl_setopt($curl, CURLOPT_POST, 1);
-            if (!empty($params)) {
-                $data = json_encode($params);
-                curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
-            }
-        } elseif ($method === "PUT") {//PUT request
-            curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "PUT");
-            if ($url_type === 'STORAGE') {
-                $params = json_decode(json_encode($params));
-                curl_setopt($curl, CURLOPT_POST, 1);
-                curl_setopt($curl, CURLOPT_UPLOAD, 1);
-                curl_setopt($curl, CURLOPT_INFILE, fopen($params->file, 'rb'));
-                curl_setopt($curl, CURLOPT_INFILESIZE, filesize($params->file));
-            } else {
-                $data = json_encode($params);
-                curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
-            }
-        } elseif ($method === "DELETE") {//DELETE request
-            curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "DELETE");
-            if (!empty($params)) {
-                curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($params));
-            }
-        }
-
-        if ($url_type === 'BASE') {//General CDN
-            curl_setopt($curl, CURLOPT_URL, self::API_URL . $url);
-            curl_setopt($curl, CURLOPT_HTTPHEADER, array("Accept: application/json", "AccessKey: $this->api_key", "Content-Type: application/json"));
-        } elseif ($url_type === 'STORAGE') {//Storage zone
-            curl_setopt($curl, CURLOPT_URL, self::STORAGE_API_URL . $url);
-            curl_setopt($curl, CURLOPT_HTTPHEADER, array("AccessKey: $this->access_key"));
-        } else {//Video stream
-            curl_setopt($curl, CURLOPT_URL, self::VIDEO_STREAM_URL . $url);
-            curl_setopt($curl, CURLOPT_HTTPHEADER, array("AccessKey: " . $this->stream_library_access_key, "Content-Type: application/*+json"));
-            if ($method === "PUT") {
-                curl_setopt($curl, CURLOPT_POSTFIELDS, file_get_contents($params['file']));
-            }
-        }
-
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 0);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);//Need this (Bunny net issue??)
-
-        $result = curl_exec($curl);
-        $responseCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        $debug_info = curl_getinfo($curl);
-        curl_close($curl);
-
-        if ($this->debug_request) {
-            return $debug_info;
-        }
-
-        if ($responseCode === 204) {
-            return [
-                'http_code' => $responseCode,
-                'response' => json_decode($result, true),
-            ];
-        }
-
-        if ($responseCode >= 200 && $responseCode < 300) {
-            return json_decode($result, true) ?? [];
-        }
-
-        return [
-            'http_code' => $responseCode,
-            'response' => json_decode($result, true),
-        ];
-    }
-
-    public function purgeCache(string $url, bool $async = false): array
-    {
-        if ($async) {
-            $url .= "&async=true";
-        }
-        return $this->APIcall('POST', "purge?url=$url");
+        return $this->APIcall('POST', 'purge', ['url' => $url, 'async' => $async, 'exactPath' => $exact_path]);
     }
 
     public function convertBytes(int $bytes, string $convert_to = 'GB', bool $format = true, int $decimals = 2): float|int|string
     {
-        if ($convert_to === 'GB') {
-            $value = ($bytes / 1073741824);
-        } elseif ($convert_to === 'MB') {
-            $value = ($bytes / 1048576);
-        } elseif ($convert_to === 'KB') {
-            $value = ($bytes / 1024);
-        } else {
-            $value = $bytes;
-        }
+        $value = match ($convert_to) {
+            'GB' => $bytes / 1073741824,
+            'MB' => $bytes / 1048576,
+            'KB' => $bytes / 1024,
+            default => $bytes,
+        };
         if ($format) {
             return number_format($value, $decimals);
         }
         return $value;
     }
 
-    public function getStatistics(int $pullzone_id = -1, int $serverzone_id = -1, bool $hourly = false): array
+    /**
+     * @param string|null $date_from ISO 8601 date, e.g. 2026-09-01
+     * @param string|null $date_to ISO 8601 date
+     * @param array<string, mixed> $options Extra query flags, e.g. ['loadErrors' => true, 'loadOriginTraffic' => true]
+     */
+    public function getStatistics(?int $pullzone_id = null, ?int $serverzone_id = null, bool $hourly = false, ?string $date_from = null, ?string $date_to = null, array $options = []): array
     {
-        return $this->APIcall('GET', 'statistics', ['pullZone' => $pullzone_id, 'serverZoneId' => $serverzone_id, 'hourly' => $hourly]);
+        return $this->APIcall('GET', 'statistics', array_merge([
+            'dateFrom' => $date_from,
+            'dateTo' => $date_to,
+            'pullZone' => $pullzone_id,
+            'serverZoneId' => $serverzone_id,
+            'hourly' => $hourly,
+        ], $options));
     }
 
     public function getBilling(): array
     {
         return $this->APIcall('GET', 'billing');
+    }
+
+    public function getBillingSummary(): array
+    {
+        return $this->APIcall('GET', 'billing/summary');
     }
 
     public function getAffiliate(): array
@@ -188,38 +191,37 @@ class BunnyAPI
 
     public function balance(): float
     {
-        return $this->getBilling()['Balance'];
+        return (float)$this->getBilling()['Balance'];
     }
 
     public function monthCharges(): float
     {
-        return $this->getBilling()['ThisMonthCharges'];
+        return (float)$this->getBilling()['ThisMonthCharges'];
     }
 
     public function totalBillingAmount(bool $format = false, int $decimals = 2): array
     {
-        $data = $this->getBilling();
-        $tally = 0;
-        foreach ($data['BillingRecords'] as $charge) {
+        $records = $this->getBilling()['BillingRecords'] ?? [];
+        $tally = 0.0;
+        $since = null;
+        foreach ($records as $charge) {
             $tally += $charge['Amount'];
+            $since = str_replace('T', ' ', (string)$charge['Timestamp']);
         }
-        if ($format) {
-            return array('amount' => (float)number_format($tally, $decimals), 'since' => str_replace('T', ' ', $charge['Timestamp']));
-        }
-        return array('amount' => $tally, 'since' => str_replace('T', ' ', $charge['Timestamp']));
+        return ['amount' => $format ? round($tally, $decimals) : $tally, 'since' => $since];
     }
 
     public function monthChargeBreakdown(): array
     {
         $ar = $this->getBilling();
-        return array('storage' => $ar['MonthlyChargesStorage'], 'EU' => $ar['MonthlyChargesEUTraffic'],
-            'US' => $ar['MonthlyChargesUSTraffic'], 'ASIA' => $ar['MonthlyChargesASIATraffic'],
-            'SA' => $ar['MonthlyChargesSATraffic']);
-    }
-
-    public function applyCoupon(string $code): array
-    {
-        return $this->APIcall('POST', 'applycode', array("couponCode" => $code));
+        return [
+            'storage' => $ar['MonthlyChargesStorage'] ?? null,
+            'EU' => $ar['MonthlyChargesEUTraffic'] ?? null,
+            'US' => $ar['MonthlyChargesUSTraffic'] ?? null,
+            'ASIA' => $ar['MonthlyChargesASIATraffic'] ?? null,
+            'SA' => $ar['MonthlyChargesSATraffic'] ?? null,
+            'AF' => $ar['MonthlyChargesAFTraffic'] ?? null,
+        ];
     }
 
     public function getCountries(): array
@@ -237,29 +239,14 @@ class BunnyAPI
         return $this->APIcall('GET', 'abusecase');
     }
 
+    public function getAbuseCase(int $id): array
+    {
+        return $this->APIcall('GET', "abusecase/$id");
+    }
+
     public function checkAbuseCase(int $id): array
     {
         return $this->APIcall('POST', "abusecase/$id/check");
-    }
-
-    public function getSupportTickets(): array
-    {
-        return $this->APIcall('GET', 'support/ticket/list');
-    }
-
-    public function getSupportTicketDetails(int $id): array
-    {
-        return $this->APIcall('GET', "support/ticket/details/$id");
-    }
-
-    public function closeSupportTicket(int $id): array
-    {
-        return $this->APIcall('POST', "support/ticket/close/$id");
-    }
-
-    public function createSupportTicket(string $subject, int $pullzone_id, int $storagezone_id, string $message): array
-    {
-        return $this->APIcall('POST', "support/ticket/create", ['Subject' => $subject, 'LinkedPullZone' => $pullzone_id, 'LinkedStorageZone' => $storagezone_id, 'Message' => $message]);
     }
 
     public function costCalculator(int $bytes): array
@@ -272,9 +259,9 @@ class BunnyAPI
         $s1pb = 0.004;
         $s2pb = 0.003;
         $s2pb_plus = 0.0025;
-        $gigabytes = (float)($bytes / 1073741824);
-        $terabytes = (float)($gigabytes / 1024);
-        return array(
+        $gigabytes = $bytes / 1073741824;
+        $terabytes = $gigabytes / 1024;
+        return [
             'bytes' => $bytes,
             'gigabytes' => $gigabytes,
             'terabytes' => $terabytes,
@@ -285,8 +272,7 @@ class BunnyAPI
             'storage_500tb' => sprintf('%f', ($s500t * $terabytes)),
             'storage_500tb_1PB' => sprintf('%f', ($s1pb * $terabytes)),
             'storage_1PB_2PB' => sprintf('%f', ($s2pb * $terabytes)),
-            'storage_2PB_PLUS' => sprintf('%f', ($s2pb_plus * $terabytes))
-        );
+            'storage_2PB_PLUS' => sprintf('%f', ($s2pb_plus * $terabytes)),
+        ];
     }
-
 }

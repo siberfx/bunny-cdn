@@ -1,10 +1,10 @@
 <?php
 require __DIR__ . '/vendor/autoload.php';
 
-use Corbpie\BunnyCdn\BunnyAPIPull;
-
-$bunny = new BunnyAPIPull();
-//Make sure API_KEY is set at line 9 bunnyAPI.php
+use Siberfx\BunnyCdn\BunnyAPIException;
+use Siberfx\BunnyCdn\BunnyAPIPull;
+use Siberfx\BunnyCdn\BunnyAPIStorage;
+use Siberfx\BunnyCdn\BunnyAPIStream;
 
 /*
  *
@@ -12,64 +12,56 @@ $bunny = new BunnyAPIPull();
  *
  */
 
-echo json_encode($bunny->listPullZones());//Returns data for all Pull zones on account
-//Here you will find the ID's for your pullZones
+$bunny = new BunnyAPIPull('your-account-api-key');
+
+try {
+    echo json_encode($bunny->listPullZones());//Returns data for all Pull zones on account
+} catch (BunnyAPIException $e) {
+    echo $e->getStatusCode() . ': ' . $e->getMessage();
+}
 
 //Examples using pull zone id: 1337
 
 //Individual pull zone data
-echo json_encode($bunny->pullZoneData(26719));
+$bunny->getPullZone(1337);
 
 //List hostnames for a pull zone
 $bunny->pullZoneHostnames(1337);
 
-//Add hostname to pull zone
+//Add hostname to pull zone and enable free SSL
 $bunny->addHostnamePullZone(1337, 'cdn.domain.com');
+$bunny->addFreeSSLCertificate('cdn.domain.com');
 
 //Force SSL for pull zone hostname
 $bunny->forceSSLPullZone(1337, 'cdn.domain.com', true);
 
-//Disable SSL for pull zone hostname
-$bunny->forceSSLPullZone(1337, 'cdn.domain.com', false);
-
 //Remove hostname for pull zone
 $bunny->removeHostnamePullZone(1337, 'cdn.domain.com');
 
-//List blocked ip addresses
-$bunny->listBlockedIpPullZone(1337);
+//Block / unblock an ip address
+$bunny->addBlockedIpPullZone(1337, '203.0.113.7');
+$bunny->unBlockedIpPullZone(1337, '203.0.113.7');
 
-//Add ip to blocked
-$bunny->addBlockedIpPullZone(1337, '199.000.111.222');
-
-//Remove blocked ip
-$bunny->unBlockedIpPullZone(1337, '199.000.111.222');
-
-//Pull zone HTTP access logs (mm-dd-yy)
-$bunny->pullZoneLogs(1337, '10-29-20');
+//Pull zone HTTP access logs for a day
+$bunny->pullZoneLogs(1337, new DateTimeImmutable('yesterday'));
 
 //Create pull zone
 $bunny->createPullZone('a_test_pull_zone', 'https://domain.com');
 
-//Purge pull zone
+//Purge pull zone (everything, or by cache tag)
 $bunny->purgePullZone(1337);
+$bunny->purgePullZone(1337, 'images');
 
 //Purge cache for a URL
 $bunny->purgeCache('https://cdn.domain.com/css/style.min.css');
 
-//Get monthly charges
-$bunny->monthCharges();
-
-//Total billing amount
-$bunny->totalBillingAmount();
-
-//Current account balance
+//Billing
 $bunny->balance();
-
-//Monthly charges break down (per zone)
+$bunny->monthCharges();
 $bunny->monthChargeBreakdown();
 
 //Bandwidth stats
-$bunny->getStatistics();
+$bunny->getStatistics(date_from: '2026-09-01', date_to: '2026-09-30');
 
 
 /*
@@ -78,46 +70,31 @@ $bunny->getStatistics();
  *
  */
 
-use Corbpie\BunnyCdn\BunnyAPIStorage;
+$storage = new BunnyAPIStorage('your-account-api-key');
 
-$bunny = new BunnyAPIStorage();
 //View all storage zones for account
-echo $bunny->listStorageZones();//Returns data for all Storage zones on account
+echo json_encode($storage->listStorageZones());
 
-$bunny->zoneConnect('homeimagebackups', '');//Create connection to 'homeimagebackups' storage zone
-//Access key (2nd param) can be set or left empty to which it will auto fetch from a listStorageZones() call
+//Select a storage zone (password is looked up with the API key when omitted), primary region New York
+$storage->setStorageZone('homeimagebackups', '', 'ny');
 
-//List folders for storage zone 'homeimagebackups'
-echo $bunny->listFolders();
+//HTTP API
+$storage->uploadFileHTTP('fluffy.jpg', 'pets/fluffy.jpg');
+echo json_encode($storage->listFiles('pets'));
+$contents = $storage->downloadFileHTTP('pets/fluffy.jpg');
+$storage->deleteFileHTTP('pets/fluffy.jpg');
 
-//Check if a folder (path) exists by using its path
-$bunny->folderExists('pets');//Returns true if exists
+//FTP (requires ext-ftp)
+$storage->zoneConnect('homeimagebackups', '', 'ny');
+$storage->createFolder('pets');
+$storage->uploadFile('fluffy.jpg', 'pets/fluffy.jpg');
+$storage->renameFile('pets/', 'fluffy.jpg', 'fluffy_young.jpg');
+$storage->moveFile('pets/', 'fluffy_young.jpg', 'pets/puppy_fluffy/');
+echo $storage->convertBytes($storage->getFileSize('pets/puppy_fluffy/fluffy_young.jpg'), 'MB');
+$storage->deleteFile('pets/puppy_fluffy/fluffy_young.jpg');
+$storage->deleteFolder('pets/puppy_fluffy/');
+$storage->closeConnection();
 
-//Create a new folder
-echo $bunny->createFolder('pets');//Creates a new folder called pets
-
-//Upload file into folder
-echo $bunny->uploadFile('fluffy.jpg', '/pets/fluffy.jpg');//Uploads fluffy.jpg as pets/fluffy.jpg
-
-//Check if a file exists by using its path and name
-$bunny->fileExists('pets/fluffy.jpg');//Returns true
-
-//Rename a file
-echo $bunny->renameFile('pets/', 'fluffy.jpg', 'fluffy_young.jpg');//Renames pets/fluffy.jpg as pets/fluffy_young.jpg
-
-//Move a file
-echo $bunny->moveFile('pets/', 'fluffy_young.jpg', 'pets/puppy_fluffy/');//Moves pets/fluffy_young.jpg to pets/puppy_fluffy/fluffy_young.jpg
-
-//Get file size
-echo $bunny->getFileSize('pets/puppy_fluffy/fluffy_young.jpg');//File size as bytes
-echo $bunny->convertBytes($bunny->getFileSize('pets/puppy_fluffy/fluffy_young.jpg'), 'MB');//File size as megabytes
-
-//Delete a file
-echo $bunny->deleteFile('pets/puppy_fluffy/fluffy_young.jpg');//Deletes fluffy_young.jpg
-
-//Delete folders (only works if folder empty)
-echo $bunny->deleteFolder('pets/puppy_fluffy/');
-echo $bunny->deleteFolder('pets/');
 
 /*
  *
@@ -125,34 +102,21 @@ echo $bunny->deleteFolder('pets/');
  *
  */
 
-use Corbpie\BunnyCdn\BunnyAPIStream;
+$stream = new BunnyAPIStream(stream_library_access_key: 'your-stream-library-key');
+$stream->setStreamLibraryId(1234);
 
-$bunny = new BunnyAPIStream();
+//List collections
+echo json_encode($stream->getStreamCollections());
 
-//List collections for library 1234
-echo json_encode($bunny->getStreamCollections(1234));
+//List videos for a collection
+$stream->setStreamCollectionGuid('886gce58-1482-416f-b908-fca0b60f49ba');
+echo json_encode($stream->listVideosForCollectionId());
 
-//List videos for library 1234 and collection 886gce58-1482-416f-b908-fca0b60f49ba
-$bunny->setStreamLibraryId(1234);
-$bunny->setStreamCollectionGuid('886gce58-1482-416f-b908-fca0b60f49ba');
-echo json_encode($bunny->listVideosForCollectionId());
+//Video information
+echo json_encode($stream->getVideo('e6410005-d591-4a7e-a83d-6c1eef0fdc78'));
+echo json_encode($stream->videoResolutionsArray('e6410005-d591-4a7e-a83d-6c1eef0fdc78'));
+echo json_encode($stream->videoSize('e6410005-d591-4a7e-a83d-6c1eef0fdc78', 'MB'));
 
-//List video information individually
-echo json_encode($bunny->getVideo(1234,'e6410005-d591-4a7e-a83d-6c1eef0fdc78'));
-
-//Get array of resolutions for video
-echo json_encode($bunny->videoResolutionsArray('e6410005-d591-4a7e-a83d-6c1eef0fdc78'));
-
-//Get size of video
-echo json_encode($bunny->videoSize('e6410005-d591-4a7e-a83d-6c1eef0fdc78', 'MB'));
-
-
-//Create a video (prepare for upload)
-echo json_encode($bunny->createVideo('title_for_the_video'));
-//OR In collection
-echo json_encode($bunny->createVideoForCollection('title_for_the_video'));
-//These return information for the video. Importantly the video guid
-
-//Upload the video file
-echo json_encode($bunny->uploadVideo('a6e8483a-7538-4eb1-bb1f-6c1eef0fdc78', 'test_video.mp4'));
-//Uploads test_video.mp4
+//Create a video, then upload the file
+$video = $stream->createVideo('title_for_the_video');
+echo json_encode($stream->uploadVideo($video['guid'], 'test_video.mp4'));
