@@ -3,6 +3,20 @@
 All notable changes to this project are documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.1] - 2026-09-30
+
+### Added
+- GitHub Actions workflow (`.github/workflows/tests.yml`). It runs Pest on PHP 8.4 and 8.5 with both lowest and stable dependencies,
+  and on PHP 8.6 (release candidate, allowed to fail). It also runs PHPStan.
+
+### Changed
+- The test suite is now written in [Pest](https://pestphp.com) 3 (`composer test`). League's Flysystem adapter conformance suite is a
+  PHPUnit test case that Pest cannot inherit, so it still runs through three small classes: `AdapterConformanceTest`,
+  `PrefixConformanceTest` and `RootConformanceTest`.
+- Raised minimum dependency versions to the first releases that support PHP 8.4: `guzzlehttp/guzzle ^7.9`, `league/flysystem ^3.29`,
+  `league/mime-type-detection ^1.16`. Dev tools were raised as well (Faker, the Flysystem test utilities, memory and path-prefixing
+  adapters, phpdotenv), so the lowest-dependency CI run is clean.
+
 ## [2.1.0] - 2026-09-30
 
 Brings the Flysystem adapter from [platformcommunity/flysystem-bunnycdn](https://github.com/PlatformCommunity/flysystem-bunnycdn)

@@ -134,7 +134,7 @@ class MockClient extends BunnyCDNClient
         $faker = Factory::create();
 
         return array_merge([
-            'Guid' => $faker->uuid,
+            'Guid' => $faker->uuid(),
             'StorageZoneName' => $storage_zone,
             'Path' => Util::normalizePath('/'.$storage_zone.'/'.$dir.'/'),
             'ObjectName' => $file,
@@ -147,7 +147,7 @@ class MockClient extends BunnyCDNClient
             'ContentType' => '',
             'DateCreated' => date('Y-m-d\TH:i:s.v'),
             'StorageZoneId' => $faker->numberBetween(0, 102400),
-            'Checksum' => strtoupper($faker->sha256),
+            'Checksum' => strtoupper($faker->sha256()),
             'ReplicatedZones' => '',
         ], $override);
     }
@@ -159,7 +159,7 @@ class MockClient extends BunnyCDNClient
         $faker = Factory::create();
 
         return array_merge([
-            'Guid' => $faker->uuid,
+            'Guid' => $faker->uuid(),
             'StorageZoneName' => $storage_zone,
             'Path' => Util::normalizePath('/'.$storage_zone.'/'.$dir.'/'),
             'ObjectName' => $file,

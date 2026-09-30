@@ -1,127 +1,38 @@
 <?php
 
-namespace Siberfx\BunnyCdn\Tests\Flysystem;
-
-use Exception;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 use Siberfx\BunnyCdn\Flysystem\Util;
 
-class UtilityClassTest extends TestCase
-{
-    /**
-     * @throws Exception
-     */
-    #[Test]
-    public function it_starts_with()
-    {
-        $this->assertTrue(
-            Util::startsWith('/test', '/')
-        );
+test('startsWith', function () {
+    expect(Util::startsWith('/test', '/'))->toBeTrue()
+        ->and(Util::startsWith('test', '/'))->toBeFalse();
+});
 
-        $this->assertFalse(
-            Util::startsWith('test', '/')
-        );
-    }
+test('endsWith', function () {
+    expect(Util::endsWith('test/', '/'))->toBeTrue()
+        ->and(Util::endsWith('test', '/'))->toBeFalse()
+        ->and(Util::endsWith('test', ''))->toBeTrue();
+});
 
-    /**
-     * @throws Exception
-     */
-    #[Test]
-    public function it_ends_with()
-    {
-        $this->assertTrue(
-            Util::endsWith('test/', '/')
-        );
+test('normalizePath', function (string $path, bool $directory, string $expected) {
+    expect(Util::normalizePath($path, $directory))->toBe($expected);
+})->with([
+    ['/test/', true, 'test/'],
+    ['/test', true, 'test/'],
+    ['/test', false, 'test'],
+    ['a\\b//c', false, 'a/b/c'],
+]);
 
-        $this->assertFalse(
-            Util::endsWith('test', '/')
-        );
+test('splitPathIntoDirectoryAndFile', function (string $path, string $file, string $dir) {
+    expect(Util::splitPathIntoDirectoryAndFile($path))->toBe(['file' => $file, 'dir' => $dir]);
+})->with([
+    ['/testing-dir', 'testing-dir', ''],
+    ['/testing.txt', 'testing.txt', ''],
+    ['/testing-dir/', 'testing-dir', ''],
+    ['/testing-dir/file.txt', 'file.txt', '/testing-dir'],
+    ['/testing-dir/nested/file.txt', 'file.txt', '/testing-dir/nested'],
+]);
 
-        $this->assertTrue(
-            Util::endsWith('test', '')
-        );
-    }
-
-    /**
-     * @throws Exception
-     */
-    #[Test]
-    public function it_tests_normalize_path()
-    {
-        $this->assertEquals(
-            'test/',
-            Util::normalizePath('/test/', true)
-        );
-
-        $this->assertEquals(
-            'test/',
-            Util::normalizePath('/test', true)
-        );
-
-        $this->assertEquals(
-            'test',
-            Util::normalizePath('/test', false)
-        );
-    }
-
-    /**
-     * @throws Exception
-     */
-    #[Test]
-    public function it_path_split()
-    {
-        $this->assertEquals(
-            [
-                'file' => 'testing-dir',
-                'dir' => '',
-            ],
-            Util::splitPathIntoDirectoryAndFile('/testing-dir')
-        );
-
-        $this->assertEquals(
-            [
-                'file' => 'testing.txt',
-                'dir' => '',
-            ],
-            Util::splitPathIntoDirectoryAndFile('/testing.txt')
-        );
-
-        $this->assertEquals(
-            [
-                'file' => 'testing-dir',
-                'dir' => '',
-            ],
-            Util::splitPathIntoDirectoryAndFile('/testing-dir/')
-        );
-
-        $this->assertEquals(
-            [
-                'file' => 'file.txt',
-                'dir' => '/testing-dir',
-            ],
-            Util::splitPathIntoDirectoryAndFile('/testing-dir/file.txt')
-        );
-
-        $this->assertEquals(
-            [
-                'file' => 'file.txt',
-                'dir' => '/testing-dir/nested',
-            ],
-            Util::splitPathIntoDirectoryAndFile('/testing-dir/nested/file.txt')
-        );
-    }
-
-    public function test_replace_first()
-    {
-        $this->assertSame(
-            'SX',
-            Util::replaceFirst('X', 'S', 'XX')
-        );
-
-        $this->assertSame(
-            'ORIGINAL',
-            Util::replaceFirst('X', 'S', 'ORIGINAL')
-        );
-    }
-}
+test('replaceFirst', function () {
+    expect(Util::replaceFirst('X', 'S', 'XX'))->toBe('SX')
+        ->and(Util::replaceFirst('X', 'S', 'ORIGINAL'))->toBe('ORIGINAL');
+});

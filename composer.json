@@ -16,23 +16,24 @@
     "php": "^8.4",
     "ext-curl": "*",
     "ext-json": "*",
-    "guzzlehttp/guzzle": "^7.4",
-    "league/flysystem": "^3.16",
-    "league/mime-type-detection": "^1.11"
+    "guzzlehttp/guzzle": "^7.9",
+    "league/flysystem": "^3.29",
+    "league/mime-type-detection": "^1.16"
   },
   "require-dev": {
-    "fakerphp/faker": "^1.23",
+    "fakerphp/faker": "^1.24",
     "illuminate/config": "^12.0|^13.0",
     "illuminate/container": "^12.0|^13.0",
     "illuminate/filesystem": "^12.0|^13.0",
     "illuminate/support": "^12.0|^13.0",
     "laravel/pint": "^1.30",
-    "league/flysystem-adapter-test-utilities": "^3",
-    "league/flysystem-memory": "^3.0",
-    "league/flysystem-path-prefixing": "^3.3",
+    "league/flysystem-adapter-test-utilities": "^3.30",
+    "league/flysystem-memory": "^3.31",
+    "league/flysystem-path-prefixing": "^3.31",
+    "pestphp/pest": "^3.8",
     "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^11.5",
-    "vlucas/phpdotenv": "^5.6"
+    "vlucas/phpdotenv": "^5.6.1"
   },
   "suggest": {
     "ext-ftp": "Required for the FTP based storage methods (uploadFile, downloadFile, createFolder, ...)",
@@ -57,11 +58,14 @@
     }
   },
   "scripts": {
-    "test": "phpunit",
+    "test": "pest",
     "analyse": "phpstan analyse",
     "format": "pint"
   },
   "config": {
-    "sort-packages": true
+    "sort-packages": true,
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
   }
 }

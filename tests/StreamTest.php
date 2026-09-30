@@ -1,116 +1,94 @@
 <?php
 
-declare(strict_types=1);
-
-namespace Siberfx\BunnyCdn\Tests;
-
-use PHPUnit\Framework\TestCase;
 use Siberfx\BunnyCdn\BunnyAPIException;
 use Siberfx\BunnyCdn\BunnyAPIStream;
 
-final class StreamTest extends TestCase
-{
-    private FakeHttpClient $http;
-    private BunnyAPIStream $bunny;
+const STREAM = 'https://video.bunnycdn.com/library/42';
 
-    protected function setUp(): void
-    {
-        $this->http = new FakeHttpClient();
-        $this->bunny = new BunnyAPIStream('api-key', 'stream-key', $this->http);
-        $this->bunny->setStreamLibraryId(42);
-    }
+beforeEach(function () {
+    $this->http = fakeHttp();
+    $this->bunny = (new BunnyAPIStream('api-key', 'stream-key', $this->http))->setStreamLibraryId(42);
+});
 
-    public function testUsesStreamHostAndLibraryKey(): void
-    {
-        $this->bunny->getVideo('vid');
-        $request = $this->http->last();
-        self::assertSame('https://video.bunnycdn.com/library/42/videos/vid', $request['url']);
-        self::assertSame('stream-key', $request['headers']['AccessKey']);
-    }
+test('uses the stream host and the library key', function () {
+    $this->bunny->getVideo('vid');
 
-    public function testLibraryIdRequired(): void
-    {
-        $this->expectException(BunnyAPIException::class);
-        new BunnyAPIStream('a', 'b', $this->http)->listVideos();
-    }
+    expect($this->http->last()['url'])->toBe(STREAM.'/videos/vid')
+        ->and($this->http->last()['headers']['AccessKey'])->toBe('stream-key');
+});
 
-    public function testCollections(): void
-    {
-        $this->bunny->getStreamCollections(search: 'cats');
-        self::assertSame('https://video.bunnycdn.com/library/42/collections?page=1&itemsPerPage=100&search=cats&orderBy=date&includeThumbnails=false', $this->http->last()['url']);
+test('the library id is required', function () {
+    (new BunnyAPIStream('a', 'b', $this->http))->listVideos();
+})->throws(BunnyAPIException::class, 'You must set the stream library id first');
 
-        $this->bunny->setStreamCollectionGuid('col');
-        $this->bunny->updateCollection('renamed');
-        self::assertSame(['name' => 'renamed'], $this->http->lastJson());
-        $this->bunny->listVideosForCollectionId();
-        self::assertSame('https://video.bunnycdn.com/library/42/videos?page=1&itemsPerPage=100&collection=col&orderBy=date', $this->http->last()['url']);
-    }
+test('collections', function () {
+    $this->bunny->getStreamCollections(search: 'cats');
+    expect($this->http->last()['url'])->toBe(STREAM.'/collections?page=1&itemsPerPage=100&search=cats&orderBy=date&includeThumbnails=false');
 
-    public function testCreateAndUpdateVideo(): void
-    {
-        $this->bunny->setStreamCollectionGuid('col');
-        $this->bunny->createVideoForCollection('Title', 5);
-        self::assertSame(['title' => 'Title', 'collectionId' => 'col', 'thumbnailTime' => 5], $this->http->lastJson());
+    $this->bunny->setStreamCollectionGuid('col')->updateCollection('renamed');
+    expect($this->http->lastJson())->toBe(['name' => 'renamed']);
 
-        $this->bunny->updateVideo('vid', ['title' => 'New']);
-        self::assertSame(['POST', 'https://video.bunnycdn.com/library/42/videos/vid'], [$this->http->last()['method'], $this->http->last()['url']]);
-    }
+    $this->bunny->listVideosForCollectionId();
+    expect($this->http->last()['url'])->toBe(STREAM.'/videos?page=1&itemsPerPage=100&collection=col&orderBy=date');
+});
 
-    public function testUploadVideoIsOctetStream(): void
-    {
-        $file = tempnam(sys_get_temp_dir(), 'vid');
-        file_put_contents($file, 'video-bytes');
-        try {
-            $this->bunny->uploadVideo('vid', $file, ['enabledResolutions' => '720p']);
-            $request = $this->http->last();
-            self::assertSame('PUT', $request['method']);
-            self::assertSame('https://video.bunnycdn.com/library/42/videos/vid?enabledResolutions=720p', $request['url']);
-            self::assertSame('application/octet-stream', $request['headers']['Content-Type']);
-            self::assertSame('video-bytes', $request['body']);
-        } finally {
-            unlink($file);
-        }
-    }
+test('creates and updates videos', function () {
+    $this->bunny->setStreamCollectionGuid('col')->createVideoForCollection('Title', 5);
+    expect($this->http->lastJson())->toBe(['title' => 'Title', 'collectionId' => 'col', 'thumbnailTime' => 5]);
 
-    public function testThumbnailCaptionsAndFetch(): void
-    {
-        $this->bunny->setThumbnail('vid', 'https://img.test/a.jpg');
-        self::assertSame('https://video.bunnycdn.com/library/42/videos/vid/thumbnail?thumbnailUrl=https%3A%2F%2Fimg.test%2Fa.jpg', $this->http->last()['url']);
+    $this->bunny->updateVideo('vid', ['title' => 'New']);
+    expect($this->http->last())->method->toBe('POST')->url->toBe(STREAM.'/videos/vid');
+});
 
-        $this->bunny->addCaptions('vid', 'en', 'English', "WEBVTT\n");
-        self::assertSame('https://video.bunnycdn.com/library/42/videos/vid/captions/en', $this->http->last()['url']);
-        self::assertSame(['label' => 'English', 'captionsFile' => base64_encode("WEBVTT\n")], $this->http->lastJson());
+test('uploads video as an octet stream', function () {
+    $file = tempnam(sys_get_temp_dir(), 'vid');
+    file_put_contents($file, 'video-bytes');
 
-        $this->bunny->fetchVideo('https://src.test/v.mp4', 'col', 'Title');
-        self::assertSame('https://video.bunnycdn.com/library/42/videos/fetch?collectionId=col', $this->http->last()['url']);
-        self::assertSame(['url' => 'https://src.test/v.mp4', 'title' => 'Title'], $this->http->lastJson());
-    }
+    $this->bunny->uploadVideo('vid', $file, ['enabledResolutions' => '720p']);
+    unlink($file);
 
-    public function testNewVideoEndpoints(): void
-    {
-        $this->bunny->transcribeVideo('vid', ['en', 'de'], 'en', true);
-        self::assertSame('https://video.bunnycdn.com/library/42/videos/vid/transcribe?force=true', $this->http->last()['url']);
-        self::assertSame(['targetLanguages' => ['en', 'de'], 'sourceLanguage' => 'en'], $this->http->lastJson());
+    expect($this->http->last())
+        ->method->toBe('PUT')
+        ->url->toBe(STREAM.'/videos/vid?enabledResolutions=720p')
+        ->body->toBe('video-bytes')
+        ->and($this->http->last()['headers']['Content-Type'])->toBe('application/octet-stream');
+});
 
-        $this->bunny->repackageVideo('vid');
-        self::assertSame('https://video.bunnycdn.com/library/42/videos/vid/repackage?keepOriginalFiles=true', $this->http->last()['url']);
+test('thumbnail, captions and fetch', function () {
+    $this->bunny->setThumbnail('vid', 'https://img.test/a.jpg');
+    expect($this->http->last()['url'])->toBe(STREAM.'/videos/vid/thumbnail?thumbnailUrl=https%3A%2F%2Fimg.test%2Fa.jpg');
 
-        $this->bunny->getVideoResolutions('vid');
-        self::assertSame('https://video.bunnycdn.com/library/42/videos/vid/resolutions', $this->http->last()['url']);
+    $this->bunny->addCaptions('vid', 'en', 'English', "WEBVTT\n");
+    expect($this->http->last()['url'])->toBe(STREAM.'/videos/vid/captions/en')
+        ->and($this->http->lastJson())->toBe(['label' => 'English', 'captionsFile' => base64_encode("WEBVTT\n")]);
 
-        $this->bunny->cleanupVideoResolutions('vid', ['resolutionsToDelete' => '240p', 'dryRun' => true]);
-        self::assertSame('https://video.bunnycdn.com/library/42/videos/vid/resolutions/cleanup?resolutionsToDelete=240p&dryRun=true', $this->http->last()['url']);
+    $this->bunny->fetchVideo('https://src.test/v.mp4', 'col', 'Title');
+    expect($this->http->last()['url'])->toBe(STREAM.'/videos/fetch?collectionId=col')
+        ->and($this->http->lastJson())->toBe(['url' => 'https://src.test/v.mp4', 'title' => 'Title']);
+});
 
-        $this->bunny->setStreamVideoGuid('vid');
-        $this->bunny->getVideoPlayData();
-        self::assertSame('https://video.bunnycdn.com/library/42/videos/vid/play', $this->http->last()['url']);
-    }
+test('transcribe, repackage and resolutions', function () {
+    $this->bunny->transcribeVideo('vid', ['en', 'de'], 'en', true);
+    expect($this->http->last()['url'])->toBe(STREAM.'/videos/vid/transcribe?force=true')
+        ->and($this->http->lastJson())->toBe(['targetLanguages' => ['en', 'de'], 'sourceLanguage' => 'en']);
 
-    public function testVideoSizeAndResolutions(): void
-    {
-        $this->http->push(200, ['storageSize' => 1048576 * 3, 'availableResolutions' => '360p,720p']);
-        self::assertSame(3, $this->bunny->videoSize('vid'));
-        $this->http->push(200, ['storageSize' => 0, 'availableResolutions' => '360p,720p']);
-        self::assertSame(['360p', '720p'], $this->bunny->videoResolutionsArray('vid'));
-    }
-}
+    $this->bunny->repackageVideo('vid');
+    expect($this->http->last()['url'])->toBe(STREAM.'/videos/vid/repackage?keepOriginalFiles=true');
+
+    $this->bunny->getVideoResolutions('vid');
+    expect($this->http->last()['url'])->toBe(STREAM.'/videos/vid/resolutions');
+
+    $this->bunny->cleanupVideoResolutions('vid', ['resolutionsToDelete' => '240p', 'dryRun' => true]);
+    expect($this->http->last()['url'])->toBe(STREAM.'/videos/vid/resolutions/cleanup?resolutionsToDelete=240p&dryRun=true');
+
+    $this->bunny->setStreamVideoGuid('vid')->getVideoPlayData();
+    expect($this->http->last()['url'])->toBe(STREAM.'/videos/vid/play');
+});
+
+test('video size and resolutions helpers', function () {
+    $this->http->push(200, ['storageSize' => 1048576 * 3, 'availableResolutions' => '360p,720p']);
+    expect($this->bunny->videoSize('vid'))->toEqual(3);
+
+    $this->http->push(200, ['storageSize' => 0, 'availableResolutions' => '360p,720p']);
+    expect($this->bunny->videoResolutionsArray('vid'))->toBe(['360p', '720p']);
+});

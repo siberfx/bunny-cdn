@@ -5,6 +5,7 @@ plus a Flysystem v3 storage adapter and Laravel integration (service provider + 
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
 [![PHP](https://img.shields.io/badge/PHP-8.4%20%7C%208.5%20%7C%208.6-purple.svg)]()
+[![Tests](https://github.com/siberfx/bunny-cdn/actions/workflows/tests.yml/badge.svg)](https://github.com/siberfx/bunny-cdn/actions/workflows/tests.yml)
 
 > Upgrading from 1.x? See [CHANGELOG.md](CHANGELOG.md#upgrading-from-1x). Keys are now passed to the constructor and
 > errors are thrown as `BunnyAPIException`.
@@ -392,7 +393,7 @@ $dns->dismissDNSConfigNotice(1234);
 ## Testing
 
 ```bash
-composer test      # PHPUnit, incl. the Flysystem adapter conformance suite
+composer test      # Pest, incl. the Flysystem adapter conformance suite
 composer analyse   # PHPStan
 ```
 

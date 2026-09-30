@@ -1,113 +1,103 @@
 <?php
 
-declare(strict_types=1);
-
-namespace Siberfx\BunnyCdn\Tests;
-
-use DateTimeImmutable;
-use PHPUnit\Framework\TestCase;
 use Siberfx\BunnyCdn\BunnyAPIPull;
 
-final class PullZoneTest extends TestCase
-{
-    private FakeHttpClient $http;
-    private BunnyAPIPull $bunny;
+beforeEach(function () {
+    $this->http = fakeHttp();
+    $this->bunny = new BunnyAPIPull('api-key', http: $this->http);
+});
 
-    protected function setUp(): void
-    {
-        $this->http = new FakeHttpClient();
-        $this->bunny = new BunnyAPIPull('api-key', http: $this->http);
-    }
+test('lists pull zones', function () {
+    $this->bunny->listPullZones(search: 'my zone');
 
-    public function testListPullZones(): void
-    {
-        $this->bunny->listPullZones(search: 'my zone');
-        self::assertSame('https://api.bunny.net/pullzone?page=0&perPage=1000&search=my%20zone&includeCertificate=false', $this->http->last()['url']);
-    }
+    expect($this->http->last()['url'])
+        ->toBe('https://api.bunny.net/pullzone?page=0&perPage=1000&search=my%20zone&includeCertificate=false');
+});
 
-    public function testCreatePullZone(): void
-    {
-        $this->bunny->createPullZone('zone', 'https://origin.test', ['Type' => 1]);
-        self::assertSame('POST', $this->http->last()['method']);
-        self::assertSame(['Name' => 'zone', 'OriginUrl' => 'https://origin.test', 'Type' => 1], $this->http->lastJson());
-        $this->bunny->createPullZone('zone', args: ['StorageZoneId' => 5]);
-        self::assertSame(['Name' => 'zone', 'StorageZoneId' => 5], $this->http->lastJson());
-    }
+test('creates a pull zone', function () {
+    $this->bunny->createPullZone('zone', 'https://origin.test', ['Type' => 1]);
+    expect($this->http->last()['method'])->toBe('POST')
+        ->and($this->http->lastJson())->toBe(['Name' => 'zone', 'OriginUrl' => 'https://origin.test', 'Type' => 1]);
 
-    public function testPurgeWithAndWithoutCacheTag(): void
-    {
-        $this->bunny->purgePullZone(1);
-        self::assertNull($this->http->last()['body']);
-        $this->bunny->purgePullZone(1, 'images');
-        self::assertSame('https://api.bunny.net/pullzone/1/purgeCache', $this->http->last()['url']);
-        self::assertSame(['CacheTag' => 'images'], $this->http->lastJson());
-    }
+    $this->bunny->createPullZone('zone', args: ['StorageZoneId' => 5]);
+    expect($this->http->lastJson())->toBe(['Name' => 'zone', 'StorageZoneId' => 5]);
+});
 
-    public function testHostnameAndCertificateEndpoints(): void
-    {
-        $this->bunny->removeHostnamePullZone(1, 'cdn.test');
-        self::assertSame('DELETE', $this->http->last()['method']);
-        self::assertSame(['Hostname' => 'cdn.test'], $this->http->lastJson());
+test('purges with and without a cache tag', function () {
+    $this->bunny->purgePullZone(1);
+    expect($this->http->last()['body'])->toBeNull();
 
-        $this->bunny->addCertificate(1, 'cdn.test', 'CERT', 'KEY');
-        self::assertSame('https://api.bunny.net/pullzone/1/addCertificate', $this->http->last()['url']);
-        self::assertSame(['Hostname' => 'cdn.test', 'Certificate' => base64_encode('CERT'), 'CertificateKey' => base64_encode('KEY')], $this->http->lastJson());
+    $this->bunny->purgePullZone(1, 'images');
+    expect($this->http->last()['url'])->toBe('https://api.bunny.net/pullzone/1/purgeCache')
+        ->and($this->http->lastJson())->toBe(['CacheTag' => 'images']);
+});
 
-        $this->bunny->removeCertificate(1, 'cdn.test');
-        self::assertSame(['DELETE', 'https://api.bunny.net/pullzone/1/removeCertificate'], [$this->http->last()['method'], $this->http->last()['url']]);
+test('hostname and certificate endpoints', function () {
+    $this->bunny->removeHostnamePullZone(1, 'cdn.test');
+    expect($this->http->last()['method'])->toBe('DELETE')
+        ->and($this->http->lastJson())->toBe(['Hostname' => 'cdn.test']);
 
-        $this->bunny->addFreeSSLCertificate('cdn.test');
-        self::assertSame('https://api.bunny.net/pullzone/loadFreeCertificate?hostname=cdn.test&useOnlyHttp01=false', $this->http->last()['url']);
+    $this->bunny->addCertificate(1, 'cdn.test', 'CERT', 'KEY');
+    expect($this->http->last()['url'])->toBe('https://api.bunny.net/pullzone/1/addCertificate')
+        ->and($this->http->lastJson())->toBe(['Hostname' => 'cdn.test', 'Certificate' => base64_encode('CERT'), 'CertificateKey' => base64_encode('KEY')]);
 
-        $this->bunny->forceSSLPullZone(1, 'cdn.test');
-        self::assertSame(['Hostname' => 'cdn.test', 'ForceSSL' => true], $this->http->lastJson());
-    }
+    $this->bunny->removeCertificate(1, 'cdn.test');
+    expect($this->http->last())->method->toBe('DELETE')->url->toBe('https://api.bunny.net/pullzone/1/removeCertificate');
 
-    public function testEdgeRules(): void
-    {
-        $this->bunny->addOrUpdateEdgeRule(1, ['ActionType' => 1, 'Enabled' => true]);
-        self::assertSame('https://api.bunny.net/pullzone/1/edgerules/addOrUpdate', $this->http->last()['url']);
+    $this->bunny->addFreeSSLCertificate('cdn.test');
+    expect($this->http->last()['url'])->toBe('https://api.bunny.net/pullzone/loadFreeCertificate?hostname=cdn.test&useOnlyHttp01=false');
 
-        $this->bunny->setEdgeRuleEnabled(1, 'guid-1', false);
-        self::assertSame('https://api.bunny.net/pullzone/1/edgerules/guid-1/setEdgeRuleEnabled', $this->http->last()['url']);
-        self::assertSame(['Id' => 1, 'Value' => false], $this->http->lastJson());
+    $this->bunny->forceSSLPullZone(1, 'cdn.test');
+    expect($this->http->lastJson())->toBe(['Hostname' => 'cdn.test', 'ForceSSL' => true]);
+});
 
-        $this->bunny->deleteEdgeRule(1, 'guid-1');
-        self::assertSame(['DELETE', 'https://api.bunny.net/pullzone/1/edgerules/guid-1'], [$this->http->last()['method'], $this->http->last()['url']]);
-    }
+test('edge rules', function () {
+    $this->bunny->addOrUpdateEdgeRule(1, ['ActionType' => 1, 'Enabled' => true]);
+    expect($this->http->last()['url'])->toBe('https://api.bunny.net/pullzone/1/edgerules/addOrUpdate');
 
-    public function testResetSecurityKeyAndAvailability(): void
-    {
-        $this->bunny->resetTokenKey(1);
-        self::assertNull($this->http->last()['body']);
-        $this->bunny->checkPullZoneAvailability('name');
-        self::assertSame(['Name' => 'name'], $this->http->lastJson());
-    }
+    $this->bunny->setEdgeRuleEnabled(1, 'guid-1', false);
+    expect($this->http->last()['url'])->toBe('https://api.bunny.net/pullzone/1/edgerules/guid-1/setEdgeRuleEnabled')
+        ->and($this->http->lastJson())->toBe(['Id' => 1, 'Value' => false]);
 
-    public function testHostnamesAndBlockedIpsHelpers(): void
-    {
-        $this->http->push(200, ['Hostnames' => [['Id' => 1, 'Value' => 'a.test', 'ForceSSL' => true]]]);
-        self::assertSame(['hostname_count' => 1, 'hostnames' => [['id' => 1, 'hostname' => 'a.test', 'force_ssl' => true]]], $this->bunny->pullZoneHostnames(1));
-        self::assertCount(1, $this->http->requests, 'pull zone data should be fetched once');
+    $this->bunny->deleteEdgeRule(1, 'guid-1');
+    expect($this->http->last())->method->toBe('DELETE')->url->toBe('https://api.bunny.net/pullzone/1/edgerules/guid-1');
+});
 
-        $this->http->push(200, ['BlockedIps' => ['1.1.1.1']]);
-        self::assertSame(['blocked_ip_count' => 1, 'ips' => ['1.1.1.1']], $this->bunny->listBlockedIpPullZone(1));
-    }
+test('reset security key and availability check', function () {
+    $this->bunny->resetTokenKey(1);
+    expect($this->http->last()['body'])->toBeNull();
 
-    public function testLegacyLogsAreParsed(): void
-    {
-        $this->http->push(200, "HIT|200|1759219200000|1024|7|1.2.3.4|-|https://cdn.test/a.jpg|DE|curl/8|req-1|DE\n\n");
-        $logs = $this->bunny->pullZoneLogs(7, new DateTimeImmutable('2026-09-30'));
-        self::assertSame('https://logging.bunnycdn.com/09-30-26/7.log', $this->http->last()['url']);
-        self::assertCount(1, $logs);
-        self::assertSame(200, $logs[0]['status']);
-        self::assertSame(7, $logs[0]['zone_id']);
-        self::assertSame(date('Y-m-d H:i:s', 1759219200), $logs[0]['datetime']);
-    }
+    $this->bunny->checkPullZoneAvailability('name');
+    expect($this->http->lastJson())->toBe(['Name' => 'name']);
+});
 
-    public function testLogsV2(): void
-    {
-        $this->bunny->pullZoneLogsV2(7, new DateTimeImmutable('2026-09-29T00:00:00+00:00'), new DateTimeImmutable('2026-09-30T00:00:00+00:00'), ['status' => '5xx']);
-        self::assertSame('https://logging.bunnycdn.com/v2/pullzones/7/logs?from=2026-09-29T00%3A00%3A00%2B00%3A00&to=2026-09-30T00%3A00%3A00%2B00%3A00&status=5xx', $this->http->last()['url']);
-    }
-}
+test('hostname and blocked ip helpers', function () {
+    $this->http->push(200, ['Hostnames' => [['Id' => 1, 'Value' => 'a.test', 'ForceSSL' => true]]]);
+    expect($this->bunny->pullZoneHostnames(1))
+        ->toBe(['hostname_count' => 1, 'hostnames' => [['id' => 1, 'hostname' => 'a.test', 'force_ssl' => true]]])
+        ->and($this->http->requests)->toHaveCount(1);
+
+    $this->http->push(200, ['BlockedIps' => ['1.1.1.1']]);
+    expect($this->bunny->listBlockedIpPullZone(1))->toBe(['blocked_ip_count' => 1, 'ips' => ['1.1.1.1']]);
+});
+
+test('parses legacy logs', function () {
+    $this->http->push(200, "HIT|200|1759219200000|1024|7|1.2.3.4|-|https://cdn.test/a.jpg|DE|curl/8|req-1|DE\n\n");
+
+    $logs = $this->bunny->pullZoneLogs(7, new DateTimeImmutable('2026-09-30'));
+
+    expect($this->http->last()['url'])->toBe('https://logging.bunnycdn.com/09-30-26/7.log')
+        ->and($logs)->toHaveCount(1)
+        ->and($logs[0])->toMatchArray([
+            'status' => 200,
+            'zone_id' => 7,
+            'datetime' => date('Y-m-d H:i:s', 1759219200),
+        ]);
+});
+
+test('logging api v2', function () {
+    $this->bunny->pullZoneLogsV2(7, new DateTimeImmutable('2026-09-29T00:00:00+00:00'), new DateTimeImmutable('2026-09-30T00:00:00+00:00'), ['status' => '5xx']);
+
+    expect($this->http->last()['url'])
+        ->toBe('https://logging.bunnycdn.com/v2/pullzones/7/logs?from=2026-09-29T00%3A00%3A00%2B00%3A00&to=2026-09-30T00%3A00%3A00%2B00%3A00&status=5xx');
+});
