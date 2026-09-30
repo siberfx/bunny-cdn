@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Siberfx\BunnyCdn;
+namespace Siberfx\BunnyCdn\BunnyCore;
 
-use Siberfx\BunnyCdn\Http\CurlHttpClient;
-use Siberfx\BunnyCdn\Http\HttpClient;
-use Siberfx\BunnyCdn\Http\HttpResponse;
+use Siberfx\BunnyCdn\BunnyCore\Http\CurlHttpClient;
+use Siberfx\BunnyCdn\BunnyCore\Http\HttpClient;
+use Siberfx\BunnyCdn\BunnyCore\Http\HttpResponse;
 
 class BunnyAPI
 {

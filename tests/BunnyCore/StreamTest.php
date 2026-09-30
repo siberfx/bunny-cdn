@@ -1,7 +1,7 @@
 <?php
 
-use Siberfx\BunnyCdn\BunnyAPIException;
-use Siberfx\BunnyCdn\BunnyAPIStream;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIException;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIStream;
 
 const STREAM = 'https://video.bunnycdn.com/library/42';
 

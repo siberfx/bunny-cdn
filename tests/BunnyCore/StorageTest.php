@@ -1,7 +1,7 @@
 <?php
 
-use Siberfx\BunnyCdn\BunnyAPIException;
-use Siberfx\BunnyCdn\BunnyAPIStorage;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIException;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIStorage;
 
 const STORAGE_LISTING = [
     ['ObjectName' => 'a.jpg', 'IsDirectory' => false, 'Length' => 2048, 'DateCreated' => '2026-09-01T10:00:00', 'LastChanged' => '2026-09-02T10:00:00', 'Guid' => 'g1'],

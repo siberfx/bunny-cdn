@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Siberfx\BunnyCdn;
+namespace Siberfx\BunnyCdn\BunnyCore;
 
 use Exception;
-use Siberfx\BunnyCdn\Http\HttpResponse;
+use Siberfx\BunnyCdn\BunnyCore\Http\HttpResponse;
 use Throwable;
 
 class BunnyAPIException extends Exception

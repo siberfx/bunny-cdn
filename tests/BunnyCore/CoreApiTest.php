@@ -1,7 +1,7 @@
 <?php
 
-use Siberfx\BunnyCdn\BunnyAPI;
-use Siberfx\BunnyCdn\BunnyAPIException;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPI;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIException;
 
 beforeEach(function () {
     $this->http = fakeHttp();

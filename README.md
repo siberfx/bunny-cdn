@@ -24,12 +24,30 @@ plus a Flysystem v3 storage adapter and Laravel integration (service provider + 
 composer require siberfx/bunny-cdn
 ```
 
+## Package structure
+
+```
+src/
+├── BunnyCdnServiceProvider.php   Laravel service provider (+ "bunnycdn" disk driver)
+├── BunnyCore/                    Siberfx\BunnyCdn\BunnyCore – bunny.net API client
+│   ├── BunnyAPI.php              account, purge, statistics, billing
+│   ├── BunnyAPIPull.php          pull zones
+│   ├── BunnyAPIStorage.php       storage zones, Edge Storage HTTP + FTP
+│   ├── BunnyAPIStream.php        Stream (video)
+│   ├── BunnyAPIDNS.php           DNS
+│   ├── BunnyAPIException.php
+│   ├── DnsRecordType.php
+│   └── Http/                     HttpClient, CurlHttpClient, HttpResponse
+├── Flysystem/                    Siberfx\BunnyCdn\Flysystem – Flysystem v3 adapter
+└── config/bunny-cdn.php          Laravel config
+```
+
 ## Usage
 
-Every class extends `BunnyAPI` and takes the same constructor:
+Every class in `Siberfx\BunnyCdn\BunnyCore` extends `BunnyAPI` and takes the same constructor:
 
 ```php
-use Siberfx\BunnyCdn\BunnyAPIPull;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIPull;
 
 $bunny = new BunnyAPIPull(
     api_key: 'account-api-key',                 // Dashboard -> Account settings -> API
@@ -50,10 +68,10 @@ $bunny->apiKey('account-api-key')->streamLibraryAccessKey('library-key');
 
 ### Errors
 
-Any non-2xx response throws `Siberfx\BunnyCdn\BunnyAPIException`:
+Any non-2xx response throws `Siberfx\BunnyCdn\BunnyCore\BunnyAPIException`:
 
 ```php
-use Siberfx\BunnyCdn\BunnyAPIException;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIException;
 
 try {
     $bunny->getPullZone(1337);
@@ -69,11 +87,11 @@ Successful calls return the decoded JSON as an array. Empty responses (e.g. HTTP
 
 ### Custom HTTP client
 
-All requests go through `Siberfx\BunnyCdn\Http\HttpClient`. The default is `CurlHttpClient`; pass your own
+All requests go through `Siberfx\BunnyCdn\BunnyCore\Http\HttpClient`. The default is `CurlHttpClient`; pass your own
 implementation (e.g. for testing or a proxy) as the third constructor argument or via `setHttpClient()`.
 
 ```php
-use Siberfx\BunnyCdn\Http\CurlHttpClient;
+use Siberfx\BunnyCdn\BunnyCore\Http\CurlHttpClient;
 
 $bunny = new BunnyAPIPull('api-key', http: new CurlHttpClient(timeout: 30, connect_timeout: 5));
 ```
@@ -98,7 +116,7 @@ BUNNY_STREAM_ACCESS_KEY=
 All classes are registered as singletons and can be injected:
 
 ```php
-public function upload(\Siberfx\BunnyCdn\BunnyAPIStorage $storage)
+public function upload(\Siberfx\BunnyCdn\BunnyCore\BunnyAPIStorage $storage)
 {
     $storage->uploadFileHTTP($path, 'avatars/1.jpg');
 }
@@ -347,7 +365,7 @@ $stream->videoSize($guid, 'MB');
 ## DNS (`BunnyAPIDNS`)
 
 ```php
-use Siberfx\BunnyCdn\DnsRecordType;
+use Siberfx\BunnyCdn\BunnyCore\DnsRecordType;
 
 $dns = new BunnyAPIDNS('api-key');
 

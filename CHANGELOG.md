@@ -3,6 +3,19 @@
 All notable changes to this project are documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-09-30
+
+### Changed
+- **Breaking:** the API client classes moved to `src/BunnyCore` and the `Siberfx\BunnyCdn\BunnyCore` namespace. That covers `BunnyAPI`,
+  `BunnyAPIPull`, `BunnyAPIStorage`, `BunnyAPIStream`, `BunnyAPIDNS`, `BunnyAPIException`, `DnsRecordType` and `Http\*`. Only
+  `BunnyCdnServiceProvider` stays in `Siberfx\BunnyCdn`. The Flysystem adapter (`Siberfx\BunnyCdn\Flysystem`) is unchanged.
+- Tests mirror the source layout (`tests/BunnyCore`, `tests/Flysystem`).
+
+### Upgrading
+Replace `Siberfx\BunnyCdn\BunnyAPI…`, `Siberfx\BunnyCdn\DnsRecordType` and `Siberfx\BunnyCdn\Http\…` imports with
+`Siberfx\BunnyCdn\BunnyCore\…`. Laravel users who resolve the clients from the container or the `bunnycdn` disk need no changes, apart
+from updating the imports in their own code.
+
 ## [2.1.1] - 2026-09-30
 
 ### Added

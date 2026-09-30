@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Siberfx\BunnyCdn\Http;
+namespace Siberfx\BunnyCdn\BunnyCore\Http;
 
 final readonly class HttpResponse
 {

@@ -3,7 +3,7 @@
 use League\Flysystem\FilesystemAdapter;
 use League\Flysystem\StorageAttributes;
 use Siberfx\BunnyCdn\Flysystem\Util;
-use Siberfx\BunnyCdn\Tests\FakeHttpClient;
+use Siberfx\BunnyCdn\Tests\BunnyCore\FakeHttpClient;
 
 /*
  * The Flysystem conformance suites (tests/Flysystem/*ConformanceTest.php) are League's PHPUnit test case and run

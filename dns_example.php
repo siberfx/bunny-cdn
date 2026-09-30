@@ -1,8 +1,8 @@
 <?php
 require __DIR__ . '/vendor/autoload.php';
 
-use Siberfx\BunnyCdn\BunnyAPIDNS;
-use Siberfx\BunnyCdn\DnsRecordType;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIDNS;
+use Siberfx\BunnyCdn\BunnyCore\DnsRecordType;
 
 $bunny = new BunnyAPIDNS('your-account-api-key');
 

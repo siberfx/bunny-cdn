@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Siberfx\BunnyCdn;
+namespace Siberfx\BunnyCdn\BunnyCore;
 
 class BunnyAPIDNS extends BunnyAPI
 {

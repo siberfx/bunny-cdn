@@ -1,7 +1,7 @@
 <?php
 
-use Siberfx\BunnyCdn\BunnyAPIDNS;
-use Siberfx\BunnyCdn\DnsRecordType;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIDNS;
+use Siberfx\BunnyCdn\BunnyCore\DnsRecordType;
 
 beforeEach(function () {
     $this->http = fakeHttp();

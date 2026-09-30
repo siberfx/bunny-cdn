@@ -1,6 +1,6 @@
 <?php
 
-use Siberfx\BunnyCdn\BunnyAPIPull;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIPull;
 
 beforeEach(function () {
     $this->http = fakeHttp();

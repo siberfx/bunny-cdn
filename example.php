@@ -1,10 +1,10 @@
 <?php
 require __DIR__ . '/vendor/autoload.php';
 
-use Siberfx\BunnyCdn\BunnyAPIException;
-use Siberfx\BunnyCdn\BunnyAPIPull;
-use Siberfx\BunnyCdn\BunnyAPIStorage;
-use Siberfx\BunnyCdn\BunnyAPIStream;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIException;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIPull;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIStorage;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIStream;
 
 /*
  *

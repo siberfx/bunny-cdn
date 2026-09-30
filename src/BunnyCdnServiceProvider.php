@@ -9,11 +9,16 @@ use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Support\ServiceProvider;
 use League\Flysystem\Filesystem;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPI;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIDNS;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIPull;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIStorage;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIStream;
+use Siberfx\BunnyCdn\BunnyCore\Http\CurlHttpClient;
+use Siberfx\BunnyCdn\BunnyCore\Http\HttpClient;
 use Siberfx\BunnyCdn\Flysystem\BunnyCDNAdapter;
 use Siberfx\BunnyCdn\Flysystem\BunnyCDNClient;
 use Siberfx\BunnyCdn\Flysystem\BunnyCDNRegion;
-use Siberfx\BunnyCdn\Http\CurlHttpClient;
-use Siberfx\BunnyCdn\Http\HttpClient;
 
 class BunnyCdnServiceProvider extends ServiceProvider
 {

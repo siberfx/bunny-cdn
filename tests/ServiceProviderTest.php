@@ -7,9 +7,9 @@ use GuzzleHttp\Psr7\Response;
 use Illuminate\Config\Repository;
 use Illuminate\Container\Container;
 use Illuminate\Filesystem\FilesystemManager;
-use Siberfx\BunnyCdn\BunnyAPIPull;
-use Siberfx\BunnyCdn\BunnyAPIStorage;
-use Siberfx\BunnyCdn\BunnyAPIStream;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIPull;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIStorage;
+use Siberfx\BunnyCdn\BunnyCore\BunnyAPIStream;
 use Siberfx\BunnyCdn\BunnyCdnServiceProvider;
 use Siberfx\BunnyCdn\Flysystem\BunnyCDNAdapter;
 
