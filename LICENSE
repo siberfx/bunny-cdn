@@ -1,8 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Selim Görmüş
-Copyright (c) corbpie (original BunnyCDN-API class, https://github.com/cp6/BunnyCDN-API)
-Copyright (c) 2019 Platform (Flysystem adapter in src/Flysystem, https://github.com/PlatformCommunity/flysystem-bunnycdn)
+Copyright (c) 2026 Selim Görmüş <info@siberfx.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

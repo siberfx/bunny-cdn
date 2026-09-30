@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Siberfx\BunnyCdn\Flysystem\Util;
 
 test('startsWith', function () {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Siberfx\BunnyCdn\Flysystem\Exceptions;
 
-class NotFoundException extends BunnyCDNException {}
+final class NotFoundException extends BunnyCDNException {}

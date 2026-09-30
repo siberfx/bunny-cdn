@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Siberfx\BunnyCdn\Tests\Flysystem;
 
 use League\Flysystem\AdapterTestUtilities\FilesystemAdapterTestCase;
@@ -18,21 +20,13 @@ use Siberfx\BunnyCdn\Flysystem\BunnyCDNClient;
  */
 abstract class RootedAdapterTestCase extends FilesystemAdapterTestCase
 {
-    public const ROOT_PATH = 'root_prefix_12345';
+    public const string ROOT_PATH = 'root_prefix_12345';
 
-    public const PULL_ZONE = 'https://example.org.local/assets/';
+    public const string PULL_ZONE = 'https://example.org.local/assets/';
 
     public static function bunnyCDNClient(): BunnyCDNClient
     {
-        LiveCredentials::load();
-        global $storage_zone;
-        global $api_key;
-
-        if ($storage_zone !== null && $api_key !== null) {
-            return new BunnyCDNClient($storage_zone, $api_key);
-        }
-
-        return new MockClient('test_storage_zone', '123');
+        return LiveCredentials::client() ?? new MockClient('test_storage_zone', '123');
     }
 
     public static function bunnyCDNAdapter(?BunnyCDNClient $client = null, string $root = self::ROOT_PATH): BunnyCDNAdapter
@@ -43,15 +37,17 @@ abstract class RootedAdapterTestCase extends FilesystemAdapterTestCase
         return $adapter;
     }
 
+    #[\Override]
     public static function createFilesystemAdapter(): FilesystemAdapter
     {
         return self::bunnyCDNAdapter();
     }
 
+    #[\Override]
     protected function tearDown(): void
     {
         try {
-            (new Filesystem(self::bunnyCDNAdapter()))->deleteDirectory('');
+            new Filesystem(self::bunnyCDNAdapter())->deleteDirectory('');
         } catch (FilesystemException) {
         }
     }
@@ -60,6 +56,7 @@ abstract class RootedAdapterTestCase extends FilesystemAdapterTestCase
      * Overrides of conformance tests
      */
 
+    #[\Override]
     public function setting_visibility(): void
     {
         $this->markTestSkipped('No visibility support is provided for BunnyCDN');
@@ -69,6 +66,7 @@ abstract class RootedAdapterTestCase extends FilesystemAdapterTestCase
      * The original tries to access the URL
      */
     #[Test]
+    #[\Override]
     public function generating_a_public_url(): void
     {
         $url = $this->adapter()->publicUrl('path.txt', new Config);
@@ -76,6 +74,7 @@ abstract class RootedAdapterTestCase extends FilesystemAdapterTestCase
         self::assertEquals(self::PULL_ZONE.self::ROOT_PATH.'/path.txt', $url);
     }
 
+    #[\Override]
     public function overwriting_a_file(): void
     {
         $this->runScenario(function () {
@@ -92,6 +91,7 @@ abstract class RootedAdapterTestCase extends FilesystemAdapterTestCase
      * Temporary URLs must be signed against the root-scoped path.
      */
     #[Test]
+    #[\Override]
     public function generating_a_temporary_url(): void
     {
         $url = self::bunnyCDNAdapter()->temporaryUrl('path.txt', new \DateTimeImmutable('+1 hour'), new Config);

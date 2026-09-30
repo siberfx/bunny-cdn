@@ -3,12 +3,13 @@
 A PHP client for the [bunny.net](https://bunny.net) API: pull zones, Edge Storage (HTTP + FTP), Stream (video) and DNS,
 plus a Flysystem v3 storage adapter and Laravel integration (service provider + `bunnycdn` disk).
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)]()
 [![PHP](https://img.shields.io/badge/PHP-8.4%20%7C%208.5%20%7C%208.6-purple.svg)]()
 [![Tests](https://github.com/siberfx/bunny-cdn/actions/workflows/tests.yml/badge.svg)](https://github.com/siberfx/bunny-cdn/actions/workflows/tests.yml)
 
-> Upgrading from 1.x? See [CHANGELOG.md](CHANGELOG.md#upgrading-from-1x). Keys are now passed to the constructor and
-> errors are thrown as `BunnyAPIException`.
+> Runnable, framework-free examples for every feature live in [native-usage-docs/](native-usage-docs/README.md).
+> Coming from `corbpie/bunny-cdn-api` or `platformcommunity/flysystem-bunnycdn`? See the migration notes in
+> [CHANGELOG.md](CHANGELOG.md#migrating).
 
 ## Requirements
 
@@ -412,10 +413,13 @@ $dns->dismissDNSConfigNotice(1234);
 
 ```bash
 composer test      # Pest, incl. the Flysystem adapter conformance suite
-composer analyse   # PHPStan
+composer analyse   # PHPStan (src + native-usage-docs)
 ```
+
+The Flysystem tests run against an in-memory storage mock. To run them against a real (dedicated test) storage zone,
+set `BUNNY_TEST_STORAGE_ZONE`, `BUNNY_TEST_STORAGE_KEY` and optionally `BUNNY_TEST_STORAGE_REGION` / `BUNNY_TEST_PULL_ZONE`.
 
 ## License
 
-MIT. Includes code from [cp6/BunnyCDN-API](https://github.com/cp6/BunnyCDN-API) and
-[PlatformCommunity/flysystem-bunnycdn](https://github.com/PlatformCommunity/flysystem-bunnycdn) (both MIT), see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
+

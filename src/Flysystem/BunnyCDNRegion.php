@@ -1,31 +1,34 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Siberfx\BunnyCdn\Flysystem;
 
-class BunnyCDNRegion
+/**
+ * Edge Storage regions (the primary region of a storage zone).
+ */
+final class BunnyCDNRegion
 {
-    public const FALKENSTEIN = 'de';
+    public const string FALKENSTEIN = 'de';
 
-    public const STOCKHOLM = 'se';
+    public const string STOCKHOLM = 'se';
 
-    public const NEW_YORK = 'ny';
+    public const string NEW_YORK = 'ny';
 
-    public const LOS_ANGELES = 'la';
+    public const string LOS_ANGELES = 'la';
 
-    public const SINGAPORE = 'sg';
+    public const string SINGAPORE = 'sg';
 
-    public const SYDNEY = 'syd';
+    public const string SYDNEY = 'syd';
 
-    public const UNITED_KINGDOM = 'uk';
+    public const string UNITED_KINGDOM = 'uk';
 
-    public const BRAZIL = 'br';
+    public const string BRAZIL = 'br';
 
-    public const JOHANNESBURG = 'jh';
+    public const string JOHANNESBURG = 'jh';
 
-    public const DEFAULT = self::FALKENSTEIN;
+    public const string DEFAULT = self::FALKENSTEIN;
 
-    /**
-     * @deprecated Use LOS_ANGELES instead.
-     */
-    public const LOS_ANGELAS = 'la';
+    #[\Deprecated('use BunnyCDNRegion::LOS_ANGELES instead', since: '1.1.0')]
+    public const string LOS_ANGELAS = 'la';
 }

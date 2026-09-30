@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use League\Flysystem\Config;
 use League\Flysystem\UnableToGenerateTemporaryUrl;
 use Siberfx\BunnyCdn\Flysystem\BunnyCDNAdapter;
@@ -7,7 +9,7 @@ use Siberfx\BunnyCdn\Flysystem\BunnyCDNClient;
 
 function signingAdapter(string $root = ''): BunnyCDNAdapter
 {
-    return (new BunnyCDNAdapter(new BunnyCDNClient('test', 'test'), 'https://pz-url.co.uk', $root))
+    return new BunnyCDNAdapter(new BunnyCDNClient('test', 'test'), 'https://pz-url.co.uk', $root)
         ->setTokenAuthKey('test-auth-key');
 }
 

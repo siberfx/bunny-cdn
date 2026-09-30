@@ -2,6 +2,7 @@ parameters:
     level: 5
     paths:
         - src
+        - native-usage-docs
     excludePaths:
         - src/config
     tmpDir: .phpstan-cache

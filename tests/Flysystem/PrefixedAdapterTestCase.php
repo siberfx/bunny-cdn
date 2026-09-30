@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Siberfx\BunnyCdn\Tests\Flysystem;
 
 use League\Flysystem\AdapterTestUtilities\FilesystemAdapterTestCase;
@@ -20,21 +22,13 @@ use Siberfx\BunnyCdn\Flysystem\BunnyCDNClient;
  */
 abstract class PrefixedAdapterTestCase extends FilesystemAdapterTestCase
 {
-    public const PREFIX_PATH = 'path_prefix_12345';
+    public const string PREFIX_PATH = 'path_prefix_12345';
 
-    public const PULL_ZONE = 'https://example.org.local/assets/';
+    public const string PULL_ZONE = 'https://example.org.local/assets/';
 
     public static function bunnyCDNClient(): BunnyCDNClient
     {
-        LiveCredentials::load();
-        global $storage_zone;
-        global $api_key;
-
-        if ($storage_zone !== null && $api_key !== null) {
-            return new BunnyCDNClient($storage_zone, $api_key);
-        }
-
-        return new MockClient('test_storage_zone', '123');
+        return LiveCredentials::client() ?? new MockClient('test_storage_zone', '123');
     }
 
     public static function bunnyCDNAdapter(?BunnyCDNClient $client = null, string $root = ''): BunnyCDNAdapter
@@ -45,15 +39,17 @@ abstract class PrefixedAdapterTestCase extends FilesystemAdapterTestCase
         return $adapter;
     }
 
+    #[\Override]
     public static function createFilesystemAdapter(): FilesystemAdapter
     {
         return new PathPrefixedAdapter(self::bunnyCDNAdapter(), self::PREFIX_PATH);
     }
 
+    #[\Override]
     protected function tearDown(): void
     {
         try {
-            (new Filesystem(self::bunnyCDNAdapter()))->deleteDirectory('/'.self::PREFIX_PATH);
+            new Filesystem(self::bunnyCDNAdapter())->deleteDirectory('/'.self::PREFIX_PATH);
         } catch (FilesystemException) {
         }
     }
@@ -62,6 +58,7 @@ abstract class PrefixedAdapterTestCase extends FilesystemAdapterTestCase
      * Overrides of conformance tests
      */
 
+    #[\Override]
     public function setting_visibility(): void
     {
         $this->markTestSkipped('No visibility support is provided for BunnyCDN');
@@ -71,6 +68,7 @@ abstract class PrefixedAdapterTestCase extends FilesystemAdapterTestCase
      * The original tries to access the URL
      */
     #[Test]
+    #[\Override]
     public function generating_a_public_url(): void
     {
         $url = $this->adapter()->publicUrl('path.txt', new Config);
@@ -78,6 +76,7 @@ abstract class PrefixedAdapterTestCase extends FilesystemAdapterTestCase
         self::assertEquals(self::PULL_ZONE.self::PREFIX_PATH.'/path.txt', $url);
     }
 
+    #[\Override]
     public function overwriting_a_file(): void
     {
         $this->runScenario(function () {
@@ -91,6 +90,7 @@ abstract class PrefixedAdapterTestCase extends FilesystemAdapterTestCase
     }
 
     #[Test]
+    #[\Override]
     public function generating_a_temporary_url(): void
     {
         $prefixAdapter = new PathPrefixedAdapter(self::bunnyCDNAdapter(), self::PREFIX_PATH);
@@ -102,6 +102,7 @@ abstract class PrefixedAdapterTestCase extends FilesystemAdapterTestCase
     }
 
     #[Test]
+    #[\Override]
     public function get_checksum(): void
     {
         $adapter = $this->adapter();

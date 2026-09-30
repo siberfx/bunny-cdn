@@ -1,8 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Siberfx\BunnyCdn\Flysystem;
 
-class WriteBatchFile
+/**
+ * A local file to upload with BunnyCDNAdapter::writeBatch().
+ */
+final readonly class WriteBatchFile
 {
     public function __construct(
         public string $localPath,

@@ -76,12 +76,9 @@ class BunnyAPIStorage extends BunnyAPI
     protected function findStorageZoneAccessKey(string $storage_name): ?string
     {
         $data = $this->listStorageZones(search: $storage_name);
-        foreach ($data['Items'] ?? $data as $zone) {
-            if (($zone['Name'] ?? null) === $storage_name) {
-                return $zone['Password'];
-            }
-        }
-        return null;//Never found access key for said storage zone
+        $zone = array_find($data['Items'] ?? $data, static fn (array $zone): bool => ($zone['Name'] ?? null) === $storage_name);
+
+        return $zone['Password'] ?? null;
     }
 
     /*

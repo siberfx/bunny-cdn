@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Siberfx\BunnyCdn\BunnyCore\BunnyAPI;
 use Siberfx\BunnyCdn\BunnyCore\BunnyAPIException;
 
@@ -20,7 +22,7 @@ test('sends the access key and json headers', function () {
 });
 
 test('a missing api key throws', function () {
-    (new BunnyAPI(http: $this->http))->getBilling();
+    new BunnyAPI(http: $this->http)->getBilling();
 })->throws(BunnyAPIException::class, 'You must provide a API key');
 
 test('an empty api key cannot be set', function () {

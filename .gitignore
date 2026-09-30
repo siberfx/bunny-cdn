@@ -1,10 +1,13 @@
 /vendor/
 composer.lock
-.idea/
-.cursor/
-.claude/
-.phpunit.result.cache
+
+# tool caches
 .phpunit.cache/
 .phpunit.result.cache
 .phpstan-cache/
-tests/Flysystem/ClientDI.php
+
+# editors & assistants
+.idea/
+.vscode/
+.cursor/
+.claude/

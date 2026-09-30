@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use League\Flysystem\Config;
 use League\Flysystem\PathPrefixing\PathPrefixedAdapter;
 use League\Flysystem\Visibility;

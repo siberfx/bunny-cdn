@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use GuzzleHttp\Client;
 use GuzzleHttp\Promise\Create;
 use GuzzleHttp\Psr7\Request;

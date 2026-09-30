@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Siberfx\BunnyCdn\BunnyCore\BunnyAPIException;
 use Siberfx\BunnyCdn\BunnyCore\BunnyAPIStream;
 
@@ -7,7 +9,7 @@ const STREAM = 'https://video.bunnycdn.com/library/42';
 
 beforeEach(function () {
     $this->http = fakeHttp();
-    $this->bunny = (new BunnyAPIStream('api-key', 'stream-key', $this->http))->setStreamLibraryId(42);
+    $this->bunny = new BunnyAPIStream('api-key', 'stream-key', $this->http)->setStreamLibraryId(42);
 });
 
 test('uses the stream host and the library key', function () {
@@ -18,7 +20,7 @@ test('uses the stream host and the library key', function () {
 });
 
 test('the library id is required', function () {
-    (new BunnyAPIStream('a', 'b', $this->http))->listVideos();
+    new BunnyAPIStream('a', 'b', $this->http)->listVideos();
 })->throws(BunnyAPIException::class, 'You must set the stream library id first');
 
 test('collections', function () {

@@ -1,6 +1,7 @@
 <?php
 
-use Faker\Factory;
+declare(strict_types=1);
+
 use League\Flysystem\Config;
 use League\Flysystem\Filesystem;
 use League\Flysystem\UnableToCopyFile;
@@ -110,13 +111,12 @@ test('sha256 checksum of a missing file throws', function () {
 });
 
 test('sha256 checksum throws when the client has no checksum', function () {
-    $faker = Factory::create();
     $client = $this->createMock(BunnyCDNClient::class);
     $client->expects($this->once())->method('list')->willReturn([
-        bunnyListingItem('file.txt', $faker->word(), ['Length' => $faker->numberBetween(0, 10240), 'Checksum' => null]),
+        bunnyListingItem('file.txt', 'some_zone', ['Checksum' => null]),
     ]);
 
-    expect(fn () => (new BunnyCDNAdapter($client))->checksum('file.txt', new Config(['checksum_algo' => 'sha256'])))
+    expect(fn () => new BunnyCDNAdapter($client)->checksum('file.txt', new Config(['checksum_algo' => 'sha256'])))
         ->toThrow(UnableToProvideChecksum::class, 'Unable to get checksum for file.txt: Checksum not available.');
 });
 
@@ -202,5 +202,5 @@ test('last modified with a malformed timestamp does not crash', function () {
         bunnyListingItem('file.txt', 'test_storage_zone', ['LastChanged' => 'not-a-valid-timestamp', 'DateCreated' => 'not-a-valid-timestamp']),
     ]);
 
-    expect((new BunnyCDNAdapter($client))->lastModified('file.txt')->lastModified())->toBe(0);
+    expect(new BunnyCDNAdapter($client)->lastModified('file.txt')->lastModified())->toBe(0);
 });

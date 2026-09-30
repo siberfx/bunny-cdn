@@ -21,7 +21,6 @@
     "league/mime-type-detection": "^1.16"
   },
   "require-dev": {
-    "fakerphp/faker": "^1.24",
     "illuminate/config": "^12.0|^13.0",
     "illuminate/container": "^12.0|^13.0",
     "illuminate/filesystem": "^12.0|^13.0",

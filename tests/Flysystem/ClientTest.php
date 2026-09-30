@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Response;
 use Siberfx\BunnyCdn\Flysystem\BunnyCDNClient;
@@ -10,14 +12,7 @@ use Siberfx\BunnyCdn\Tests\Flysystem\MockClient;
 
 function storageClient(): BunnyCDNClient
 {
-    LiveCredentials::load();
-    global $storage_zone, $api_key, $region;
-
-    if ($storage_zone !== null && $api_key !== null) {
-        return new BunnyCDNClient($storage_zone, $api_key, $region ?? BunnyCDNRegion::DEFAULT);
-    }
-
-    return new MockClient('test_storage_zone', '123');
+    return LiveCredentials::client() ?? new MockClient('test_storage_zone', '123');
 }
 
 function clearStorage(BunnyCDNClient $client): void

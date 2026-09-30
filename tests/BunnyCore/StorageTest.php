@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Siberfx\BunnyCdn\BunnyCore\BunnyAPIException;
 use Siberfx\BunnyCdn\BunnyCore\BunnyAPIStorage;
 
