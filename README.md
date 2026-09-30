@@ -7,7 +7,8 @@ plus a Flysystem v3 storage adapter and Laravel integration (service provider + 
 [![PHP](https://img.shields.io/badge/PHP-8.4%20%7C%208.5%20%7C%208.6-purple.svg)]()
 [![Tests](https://github.com/siberfx/bunny-cdn/actions/workflows/tests.yml/badge.svg)](https://github.com/siberfx/bunny-cdn/actions/workflows/tests.yml)
 
-> Runnable, framework-free examples for every feature live in [native-usage-docs/](native-usage-docs/README.md).
+> Plain PHP usage of every feature is explained in [NATIVE_USAGE.md](NATIVE_USAGE.md), backed by the runnable
+> examples in [native-usage-docs/](native-usage-docs/README.md).
 > Coming from `corbpie/bunny-cdn-api` or `platformcommunity/flysystem-bunnycdn`? See the migration notes in
 > [CHANGELOG.md](CHANGELOG.md#migrating).
 

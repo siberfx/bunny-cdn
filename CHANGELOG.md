@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ## [1.1.0] - 2026-09-30
 
 ### Added
+- `NATIVE_USAGE.md`: a detailed plain-PHP guide to every feature. Each section links to the matching runnable example.
 - `native-usage-docs/`: ten runnable, framework-free examples covering the account API, pull zones, storage zones,
   Edge Storage (HTTP and FTP), Stream, DNS, the Flysystem adapter and custom HTTP clients. They are read-only unless
   `BUNNY_EXAMPLES_WRITE=1` is set. PHPStan checks them in CI so they stay in sync with the API.
